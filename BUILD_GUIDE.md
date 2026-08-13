@@ -1637,9 +1637,44 @@ genuinely **zero** and the sky is empty. That is the point: the fiddler crab sho
 switch from below (it comes up as the water leaves), the egret shows it from above, and the same
 falling tide hands one guild to the other.
 
-Measured over eight cycles: **away 54%, hunting 25%, in flight 21%.** The first pass had it
-flying more than hunting (22.5k frames against 9.1k) because the staging point was 50–80 m beyond
-the plot edge at 7.5 m/s. Cut to 12–34 m at a real egret's 11 m/s.
+The first pass let the commute swallow the hunt — 22.5k frames flying against 9.1k hunting,
+because the staging point was 50–80 m beyond the plot edge at 7.5 m/s. Cut to 12–34 m at a real
+egret's 11 m/s.
+
+### The tide gate, corrected
+
+The first gate was "tide below the top of the hunting band", 2.15 m. That is true for most of a
+cycle — and on a NEAP tide, whose high water is only 2.20 (tide.js), it is very nearly always
+true, so the bird effectively never left. **Being present most of the time is exactly what this
+species must not be.**
+
+Two marks, not one, with **hysteresis**: in below **1.30 m and still falling**, out once the flood
+reaches **1.70 m**. The gap between them is the bird committing to a tide rather than flapping in
+and out at a threshold, and requiring the ebb means arrivals happen behind the retreating water
+instead of at the same height on the way back up.
+
+Presence against tide height, over twenty cycles:
+
+| tide | birds present |
+|---|---|
+| 0.0–0.5 m | **90%** |
+| 0.5–1.0 m | 67% |
+| 1.0–1.5 m | 33% |
+| 1.5–2.0 m | 20% |
+| 2.0–2.5 m | 12% |
+| 2.5–3.0 m | 1% |
+| above 3.0 m | **0%** |
+
+Median arrival 1.02 m, median departure 1.70 m; 32% present overall, 18% hunting. Everything
+above 1.70 m is a bird on its way out, not one still working.
+
+`ARRIVE_STAGGER` had to come down to 0–9 s with it: the window in which the tide is both below
+1.30 and still falling is only about twenty seconds of a ninety-second cycle, and at 26 s some
+birds never got in before the flood turned them back.
+
+**One consequence worth knowing: on a neap tide low water is 1.00 and barely clears the arrival
+mark, so the birds hardly visit — the big feeding days are the spring lows.** That is true of the
+real place, and it gives the spring-low button one more thing to be for.
 
 ### The hunt is three speeds
 

@@ -16,9 +16,10 @@
    the same falling tide turns one guild on and hands it to another.
 
    WHAT DRIVES A BIRD, in priority order:
-     1. is there exposed flat to work   — if not, leave, or stay away
-     2. is it dark                      — egrets roost at night
-     3. otherwise                       — stalk the waterline, and stab
+     1. is the water low and still falling — if not, stay away
+     2. has the flood reached LEAVE_ABOVE  — then go, wherever it is
+     3. is it dark                       — egrets roost at night
+     4. otherwise                        — stalk the waterline, and stab
 
    THE HUNT IS THE ANIMATION. A heron hunting is three speeds in
    sequence and the contrast between them is the whole thing: a slow
@@ -57,6 +58,32 @@
   var WADE_DEPTH = 0.16;        // metres of water it will stand in; deeper and it walks out
   var Z_RANGE = [-34, 30];
 
+  /* ---------- WHEN IT COMES, AND WHEN IT GOES ----------
+     This is a LOW TIDE bird and the gate has to say so. The first pass
+     gated on "tide below the top of the hunting band", 2.15 m, which is
+     true for most of a cycle — and on a neap tide, whose high water is
+     only 2.20 (tide.js), it is very nearly always true, so the bird
+     never left at all. Being present most of the time is exactly what
+     this species must not be.
+
+     So: two marks, not one, read against tide.js's envelope —
+     spring low 0.13, neap low 1.00, neap high 2.20, spring high 3.10.
+
+     HYSTERESIS IS THE POINT. A single threshold makes a bird that
+     hovers at the mark flap in and out every few seconds. A real egret
+     commits to a tide: it drops in behind the falling water and works
+     until the flood pushes it off. The gap between the two marks is
+     that commitment.
+
+     It also has to be EBBING to come in, so arrivals happen behind the
+     retreating waterline rather than at the same height on the way back
+     up. One consequence worth knowing: on a neap tide, low water is
+     1.00 and barely clears ARRIVE_BELOW, so the birds hardly visit —
+     the big feeding days are the spring lows. That is true of the real
+     place and it is why the flat is worth visiting on a spring low. */
+  var ARRIVE_BELOW = 1.30;      // metres CD — flies in once the water is under this, and falling
+  var LEAVE_ABOVE = 1.70;       // metres CD — and off again once the flood reaches this
+
   var WALK = 0.42;              // m/s, the deliberate wade
   var TURN = 2.2;               // rad/s
   var STEP_LEN = 0.62;          // metres per stride cycle
@@ -75,7 +102,11 @@
   var GLIDE_SPD = 3.4;          // m/s on final approach
   var FLAP_HZ = 2.3;
   var DESCEND_FROM = 22;        // metres out that it starts dropping toward the landing spot
-  var ARRIVE_STAGGER = [0, 26]; // seconds — they do not all pitch in together
+  /* Short, because the arrival window itself is short: the tide is only
+     below ARRIVE_BELOW and still falling for something like twenty
+     seconds of a ninety-second cycle. At 26 s some birds never made it
+     in at all before the flood turned them back. */
+  var ARRIVE_STAGGER = [0, 9];  // seconds — they still do not all pitch in together
 
   /* The panic radius. Generous: a crab does not wait to find out how
      hungry the heron is. */
@@ -318,10 +349,17 @@
     }
     var spot = { x: 0, z: 0 };
 
-    /* Is there anything worth flying in for? The flat has to be out of
-       the water and it has to be light. */
-    function shoreIsOpen() {
-      return !world.isNight && world.tide < HUNT_BAND[1] - 0.15;
+    /* Worth flying in for: low water, still falling, and light enough to
+       hunt in. Egrets are diurnal and roost at night. */
+    function canArrive() {
+      return !world.isNight && world.tideDir < 0 && world.tide < ARRIVE_BELOW;
+    }
+    /* And the reasons to give up on the tide. Note this is NOT the
+       negation of the one above — the gap between the two marks is what
+       keeps a bird working through the bottom of the tide instead of
+       leaving the moment the water turns. */
+    function mustLeave() {
+      return world.isNight || world.tide > LEAVE_ABOVE;
     }
 
     function stepTo(b, tx, tz, spd, dt) {
@@ -344,7 +382,7 @@
        update
        ------------------------------------------------------------ */
     function update(dt) {
-      var open = shoreIsOpen();
+      var arriving = canArrive(), leaving = mustLeave();
       var touched = false;
 
       for (var bi = 0; bi < N; bi++) {
@@ -354,7 +392,7 @@
           /* ---- off the plot entirely ---- */
           case 'away':
             b.act = 'away';
-            if (open) {
+            if (arriving) {
               b.wait -= dt;
               if (b.wait <= 0 && findSpot(spot)) {
                 /* Come in from off-shore — over the channel, not over
@@ -402,7 +440,7 @@
 
           /* ---- working the flat ---- */
           case 'hunt':
-            if (!open) {
+            if (leaving) {
               b.state = 'outbound';
               b.wingOut = 1;
               b.neckOut = 0;
