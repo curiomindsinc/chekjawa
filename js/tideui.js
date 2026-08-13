@@ -83,6 +83,12 @@
        (§26): the moment the lagoon drains and 6 000 blades go flat is the
        best thing the low tide does, and it deserves to be called out. */
     var grassEl = document.getElementById('grass-state');
+    /* The spoon mat gets its own row rather than being folded into the
+       one above (§29). The two plants are in different bands and do
+       different things on the same tide — the lagoon meadow is still
+       standing in water while the mat up on the flat has already gone
+       over — and a single "seagrass" line would hide exactly that. */
+    var spoonEl = document.getElementById('spoon-state');
 
     btnSpring.addEventListener('click', function () {
       var r = world.jumpToSpringLow();
@@ -164,6 +170,10 @@
         grassEl.textContent = up > 0.9 ? 'standing'
           : up < 0.1 ? 'flat on the mud'
           : Math.round(up * 100) + '% still up';
+        var lift = world.spoongrass.lifted();
+        spoonEl.textContent = lift > 0.9 ? 'lifted, green'
+          : lift < 0.1 ? 'wilted on the sand'
+          : Math.round(lift * 100) + '% still wet';
       }
 
       predictAccum += dt;

@@ -1528,3 +1528,94 @@ mud' covers most of a low tide and says nothing. The fiddler publishes `sift` / 
 - **Spoon seagrass**, the lagoon's other plant (§26) — now the oldest open item.
 - Horn snail, hermit crab (the SCAVENGERS row is still empty), sand dollar, Haddon's carpet anemone.
 - §1's v2 list is otherwise untouched.
+
+---
+
+## 29. Spoon seagrass — `js/spoongrass.js` (2026-08-13)
+
+The oldest open item on the list, and the first of the v2 roster's plants after tape seagrass.
+It is also the one that fixes §26's own complaint.
+
+### Why it is not a small tape seagrass
+
+§26 shipped a meadow **nothing on this shore could eat**: every v1 grazer bottoms out at 1.0 m CD
+and the Enhalus bed tops out at 0.95, which is why the sea hare had to be invented in §27 to give
+it a mouth. *Halophila ovalis* is the pioneer of the family — it takes bare sand from **0.85 to
+1.70 m CD**, the open flat. That is inside the dog conch's band (1.0–1.8). It is the first plant
+here that grows where the animals already are.
+
+Three things follow from that and each of them is a real difference, not a reskin:
+
+- **The tide beat is colour, not collapse.** §26's payoff is a metre-long blade lying flat at a
+  spring low. A 12 cm leaf has nowhere to fall — it is already flat. So exposure is read the other
+  way: the mat dulls olive and lies over, the flood lifts and greens it. Cheaper too — no 90°
+  rotation to recompute, and the leaf's geometry starts at y=0 so there is no half-length push to
+  keep it out of the mud the way seagrass.js needs.
+- **It regrows twice as fast** (`GROW_SECS` 95 against 190). That is the plant's whole strategy —
+  it survives being eaten rather than avoiding it — and it is what makes it safe to put in a
+  grazer's band.
+- **Its own crop array.** A conch cropping the flat must not drain the lagoon forty metres away.
+  Published as `world.spoonAt` / `world.grazeSpoon`, deliberately a second pair of verbs rather
+  than one `plantAt` that picks by height: an animal should have to say what it is eating.
+
+### The dog conch finally has a second food
+
+`SPOON_BITE` 0.45 of its film rate — it rasps epiphytes off the leaves rather than stripping the
+mat. Over twelve cycles: mat under the conches **0.50**, untouched mat in the same band **1.00**
+(n = 4 173). 2:1, and it reads, because leaf length runs off the crop (0.35 + 0.65 f) and a
+grazed patch also tints olive.
+
+### Three passes to make a mat look like a mat
+
+Worth recording because the first two were both wrong for instructive reasons.
+
+1. **42 cm lily pads.** `BoxGeometry`'s x is in METRES and only y is scaled by the instance
+   matrix — seagrass.js's `0.085` is a tape blade's real 8.5 cm width. Read as a proportion of
+   length, the leaves came out 42 cm wide on 12 cm stalks.
+2. **One leaf per square metre.** 11 000 leaves spread evenly over a band 280 m long and 38 m
+   across reads as scattered weeds. Dense small patches instead — the same thick-patch/bare-sand
+   contrast tape seagrass uses.
+3. **Dense patches were still not enough.** 16 000 leaves in 1.15 m patches cover about 8% of
+   10 600 m², so patches land ten metres apart and a close-up of ground the *resource* says is at
+   full crop shows bare sand. The fix is a third tier — mats grouped into **beds** — which puts
+   the bare ground between the beds instead of inside them. A 12 cm leaf cannot carpet 10 600 m²
+   at any instance count worth paying for; spend the leaves where they read.
+
+Final: 20 000 leaves, 17 beds, one draw call.
+
+### A conch bug the mat exposed
+
+Twelve cycles put the median conch at **1.91 m CD** against a stated band of 1.0–1.8, upper
+quartile 2.00, not one animal below 1.0 — all piled against `pickTarget`'s own ceiling of
+`ZONE[1] + 0.3`. They had been climbing out of their zone since §23 and nothing had looked.
+
+**The ratchet is in the asymmetry between the halves of the cycle.** On the ebb a conch that lags
+the retreating waterline is left dry and BURIES — it gives up ground passively. On the flood it
+digs out and actively follows the water, and on a flood the shallow depth it wants is always
+up-shore. Every cycle it loses ground by accident and takes it back on purpose.
+
+Two fixes, and the first alone was not enough:
+
+- **A band term in the score,** `BAND_PULL`. At 0.9 it only slowed the drift (1.91 → 1.54, then
+  back to 1.78 over ten more cycles): both terms are in metres and both read the same 0.03 m/m
+  shore slope, so a hop that buys 0.03 of band costs about 0.03 of depth error and they cancel.
+  At **4.0** the ceiling holds — nothing now leaves the band. The term is zero inside the zone, so
+  it can afford to be brutal outside it.
+- **Depth only counts on the ebb.** A submerged conch on a rising tide has no reason to walk
+  up-shore after shallower water; it sits, which is what being caught by a flood looks like.
+  Keeping the ebb half intact is what keeps this the animal that tracks the waterline down.
+
+Result over 20 cycles: median settles at **1.60** and flattens from cycle 10, conches on the mat
+hold at 26–32 of 44 instead of bleeding to 14.
+
+### Also
+
+The tide panel gets its own **Spoon grass** row. The two plants are in different bands and do
+different things on the same tide — the lagoon meadow is still standing in water while the mat on
+the flat has already gone over — and one "Seagrass" line would hide exactly that.
+
+### Still owed
+
+- Hermit crab (the SCAVENGERS row is still empty), horn snail, little egret.
+- *Ulva*, *Sargassum* — the last two producers.
+- The rest of §1's v2 list, and the **true goby** §24 still owes §5.

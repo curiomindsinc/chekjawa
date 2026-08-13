@@ -1029,6 +1029,18 @@
       rocks: rocks, halfX: SIM_HALF_X, zMin: SIM_Z_MIN, zMax: SIM_Z_MAX
     });
 
+    /* ---------- the spoon seagrass mat (§7, §29) ----------
+       Same handle, same node grid, its own crop array — but a band
+       ABOVE the tape meadow, on the sand flat. That is the point of it:
+       every v1 grazer bottoms out at 1.0 m CD and the Enhalus meadow
+       tops out at 0.95, so this is the first plant on the shore that
+       grows where the animals already are. See spoongrass.js. */
+    var spoongrass = SpoonGrass.build({
+      scene: scene, N: N, heights: hArr, wet: wet,
+      indexAt: indexAt, heightAt: columnHeightAt, waterAt: waterAt,
+      rocks: rocks, halfX: SIM_HALF_X, zMin: SIM_Z_MIN, zMax: SIM_Z_MAX
+    });
+
     /* ============================================================
        world object
        ============================================================ */
@@ -1078,11 +1090,20 @@
       grazeFilm: biofilm.graze,         // (x,z,want) -> how much was actually there to eat
       biofilm: biofilm,                 // .cover() for stats, .capacity for debugging
       /* The same two verbs for the meadow (§26). Nothing in the v1 roster
-         reaches down to 0.9 m CD to use them yet — the sea hare, sand dollar
-         and green turtle are the animals these are waiting for. */
+         reaches down to 0.9 m CD to use them — the sea hare was built for
+         exactly that (§27), and the sand dollar and green turtle are still
+         owed. */
       grassAt: seagrass.at,
       grazeGrass: seagrass.graze,
       seagrass: seagrass,
+      /* And again for the spoon grass mat (§29), which sits a whole band
+         higher and IS inside the v1 grazers' reach. Deliberately a separate
+         pair of verbs rather than one "plantAt" that picks by height: an
+         animal should have to say which plant it is eating, and a conch
+         cropping the sand flat must not drain the lagoon meadow. */
+      spoonAt: spoongrass.at,
+      grazeSpoon: spoongrass.graze,
+      spoongrass: spoongrass,
       poolAt: poolAtXZ,                 // (x,z) -> pool record, or null
       heightAt: columnHeightAt,         // (x,z) -> terrain height, metres CD
       bandAtZ: bandAt,
@@ -1207,6 +1228,7 @@
            125 s from bare to full is not a difference anything can see. */
         biofilm.update(dt, worldOut.daylight);
         seagrass.update(dt, t, worldOut.daylight);
+        spoongrass.update(dt, t, worldOut.daylight);
 
         /* ---- biofilm on the boulders ----
            Same sheen as the flat, painted per rock instance from the film at

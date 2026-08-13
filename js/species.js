@@ -128,7 +128,7 @@ var SPECIES = {
     category: 'MOLLUSC', role: 'Grazer · tide follower',
     zone: '1.0 – 1.8 m CD',
     trophic: 'GRAZERS',
-    eats: ['biofilm', 'seagrass'],
+    eats: ['biofilm', 'spoongrass', 'seagrass'],
     about: 'A heavy, thick-lipped sea snail of the sandy flats — one of the animals Chek Jawa is ' +
       'known for. It does not crawl like an ordinary snail. It plants a pointed, claw-like foot ' +
       'into the sand and vaults, hopping down-shore behind the falling water. Caught out in the ' +
@@ -294,13 +294,13 @@ var FLORA = {
   },
 
   seagrass: {
-    emoji: '🌿', name: 'Seagrass', group: 'PRODUCERS',
+    emoji: '🌿', name: 'Tape Seagrass', group: 'PRODUCERS',
     kind: 'flora',
     category: 'FLOWERING PLANT', role: 'Producer · habitat builder',
-    zone: '0.0 – 1.2 m CD, the lagoon',
+    zone: '0.0 – 1.0 m CD, the lagoon',
     trophic: 'PRODUCERS',
     about: 'Not seaweed — a true flowering plant that went back to the sea, with roots, veins and ' +
-      'pollen. Chek Jawa\'s lagoon holds meadows of tape and spoon seagrass that only surface on ' +
+      'pollen. Chek Jawa\'s lagoon holds metre-long ribbons of tape seagrass that only surface on ' +
       'the lowest spring tides. Everything about the lagoon\'s richness starts here.',
     why: 'Seagrass meadows do three jobs at once: they feed grazers directly, they hold the ' +
       'sediment down so the flat stays a flat, and their blades are the nursery walls that ' +
@@ -313,6 +313,33 @@ var FLORA = {
     ],
     behavioural: [
       { title: 'Meadow shelter', text: 'The stand itself is the adaptation — dense blades break sightlines and currents, which is why juveniles of so many species are found only inside them.' }
+    ]
+  },
+
+  spoongrass: {
+    emoji: '🍃', name: 'Spoon Seagrass', group: 'PRODUCERS',
+    kind: 'flora',
+    category: 'FLOWERING PLANT', role: 'Producer · pioneer',
+    zone: '0.9 – 1.7 m CD, the sand flat',
+    trophic: 'PRODUCERS',
+    about: 'The smallest seagrass here and the toughest — paired oval leaves the size of a ' +
+      'thumbnail, run out along a creeping stem just under the sand. It grows a whole band higher ' +
+      'up the shore than tape seagrass, out on the open flat, where it spends part of every tide ' +
+      'lying exposed to the sun.',
+    why: 'Spoon seagrass is the coloniser. It takes bare sand nothing else will hold, grows back ' +
+      'from almost nothing in days, and by doing so it is the plant that most animals on this ' +
+      'shore can actually reach — the lagoon meadow is under water when they are feeding, this ' +
+      'is not. It is also the favourite food of dugongs, which plough it in visible trails.',
+    funFact: 'It is called dugong grass. A feeding dugong leaves a bare winding furrow through the ' +
+      'mat that can still be seen from the air days later — some of the best evidence we have of ' +
+      'where they have been.',
+    structural: [
+      { title: 'Paired oval leaves', text: 'Two spoon-shaped blades to a node, opposed across the runner. Small enough that a drained flat cannot flatten them — they are already flat.' },
+      { title: 'Creeping rhizome', text: 'A runner just under the surface sends up a new pair every few centimetres, so the plant spreads sideways across open sand instead of upward.' }
+    ],
+    behavioural: [
+      { title: 'Grows back fastest', text: 'Cropped to stubs it regrows in days, not months. That is the whole strategy — it survives being eaten rather than avoiding it.' },
+      { title: 'Wilts and waits', text: 'Exposed at low water the mat dulls olive and lies over; the flood lifts and greens it again within minutes.' }
     ]
   },
 

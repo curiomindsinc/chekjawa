@@ -52,6 +52,7 @@
   var SPACING = 1.1;            // metres — they feed spread out, not in a heap
   var GRAZE_RATE = 0.06;        // film units per second while resting on the sand (§7)
   var BARE = 0.10;              // below this the patch is cleaned up — worth hopping on
+  var SPOON_BITE = 0.45;        // fraction of that rate it takes off the spoon mat (§29)
 
   var seed = 777001;
   function rand() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
@@ -254,6 +255,45 @@
        ------------------------------------------------------------ */
     var TRIES = 7;
     var FOOD_WEIGHT = 0.12;       // metres of depth error one full patch is worth
+    /* Spoon grass is worth rather less per unit than clean film (§29). A
+       conch rasps epiphytes and detritus off the mat rather than eating
+       the leaf, so a thick mat is not the windfall a thick biofilm is —
+       and pricing them equally made the animal ignore the open sand it is
+       supposed to work. Two thirds is what keeps both foods in play. */
+    var SPOON_WEIGHT = 0.08;
+    /* THE BAND TERM (§29) — a fix, not a feature.
+       Twelve tide cycles put the median conch at 1.91 m CD and the upper
+       quartile at 2.00, against a stated band of 1.0–1.8, with not one
+       animal below 1.0. They pile up against pickTarget's own ceiling of
+       ZONE[1] + 0.3 = 2.10.
+
+       The ratchet is in the asymmetry between the two halves of the
+       cycle. On the ebb a conch that lags the retreating waterline is
+       left dry and BURIES — it stops moving, passively. On the flood it
+       digs out and actively follows the water, and on a flood the
+       shallow depth it wants is always up-shore. So every cycle spends
+       its down-shore travel passively and its up-shore travel actively,
+       and the animal walks up the beach a little at a time.
+
+       Depth preference alone cannot see this, because at any instant the
+       conch is standing in exactly the water it asked for. The band has
+       to be in the score directly.
+
+       IT HAS TO BE STEEP, and the first attempt at 0.9 was not: it only
+       slowed the drift (median 1.91 -> 1.54, then back to 1.78 over ten
+       more cycles). Both terms are in metres and both read the SAME
+       shore slope — about 0.03 m of height per metre travelled — so a
+       hop that buys 0.03 of band also costs about 0.03 of depth error,
+       and at a weight near 1.0 they cancel almost exactly. The band term
+       is zero anywhere inside the zone, so it can afford to be brutal
+       outside it without ever touching the waterline-following that is
+       this animal's whole character. */
+    var BAND_PULL = 4.0;          // metres of depth error per metre outside the band
+    function bandMiss(h) {
+      if (h < ZONE[0]) return ZONE[0] - h;
+      if (h > ZONE[1]) return h - ZONE[1];
+      return 0;
+    }
     function pickTarget(c) {
       var bestX = c.x, bestZ = c.z, bestScore = Infinity, found = false;
       var dist = range(HOP_DIST[0], HOP_DIST[1]);
@@ -267,7 +307,10 @@
         var surf = world.waterAt(nx, nz);
         if (surf === null) continue;                       // never hop onto dry sand
         var depth = surf - h;
-        var score = Math.abs(depth - c.want) - world.filmAt(nx, nz) * FOOD_WEIGHT;
+        var score = Math.abs(depth - c.want)
+                  + bandMiss(h) * BAND_PULL
+                  - world.filmAt(nx, nz) * FOOD_WEIGHT
+                  - world.spoonAt(nx, nz) * SPOON_WEIGHT;
         if (score < bestScore) { bestScore = score; bestX = nx; bestZ = nz; found = true; }
       }
       if (!found) return false;
@@ -324,14 +367,43 @@
              leaves is a faint trail of worked patches, not bare ground. */
           var here = world.filmAt(c.x, c.z);
           if (here > BARE) world.grazeFilm(c.x, c.z, GRAZE_RATE * dt);
+          /* And the spoon grass mat under it, where there is one (§29).
+             Slower than it takes film: this is a snail rasping epiphytes
+             off leaves, not stripping the mat, and the mat has to survive
+             44 conches working the same band it grows in. What it leaves
+             is a thinner, olive-er patch of turf, not bare sand. */
+          var grass = world.spoonAt(c.x, c.z);
+          if (grass > BARE) world.grazeSpoon(c.x, c.z, GRAZE_RATE * SPOON_BITE * dt);
           c.rest -= dt;
           if (c.rest <= 0) {
             var depth = surf - world.heightAt(c.x, c.z);
-            /* Two reasons to move on: the water it is standing in has
-               drifted away from what it wants, or it has cleaned up the
-               sand it is standing on. A conch in the right depth on an
-               uneaten patch has no reason to go anywhere. */
-            if (Math.abs(depth - c.want) > 0.06 || here <= BARE) {
+            /* Reasons to move on. Being out of the band matters most —
+               without it a conch that has drifted up-shore is perfectly
+               content where it stands and never re-picks, so the band
+               term above never gets a vote.
+
+               DEPTH ONLY COUNTS ON THE EBB (§29), and that is the rest
+               of the ratchet fix. Clamping the band stopped conches
+               leaving their zone but they still crept to the top of it,
+               because chasing a preferred depth is not symmetric: on a
+               FALLING tide the water it wants is down-shore, on a RISING
+               tide it is up-shore, and only the falling half is ever
+               interrupted — the ebb outruns a conch (the waterline
+               crosses this slope at about 2 m/s against a hop of well
+               under one), it is left dry, and it buries. So it gives up
+               ground passively and takes it back deliberately, every
+               cycle, forever.
+
+               The half that is wrong is the flood. A conch that is
+               already submerged and feeding has no reason to walk
+               up-shore after shallower water; it sits, which is what
+               being caught by a rising tide actually looks like. Keeping
+               the ebb half intact is what keeps this the animal that
+               tracks the waterline down. */
+            var ebbing = world.tideDir < 0;
+            if ((ebbing && Math.abs(depth - c.want) > 0.06) ||
+                bandMiss(world.heightAt(c.x, c.z)) > 0.05 ||
+                (here <= BARE && grass <= BARE)) {
               if (!pickTarget(c)) c.rest = range(0.4, 1.2);
             } else {
               c.rest = range(REST[0], REST[1]);
