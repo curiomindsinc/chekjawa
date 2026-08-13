@@ -1,0 +1,61 @@
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# Editors / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+
+# Node (only if tooling is ever added — vendor/three.min.js stays tracked)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+
+# Build / dist output
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Local dev server / tooling caches
+.cache/
+.parcel-cache/
+.vite/
+.tmp/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# Local scratch — put throwaway captures and experiments here
+scratch/
+tmp/
+*.bak
+*.orig
+*.rej
+
+# Large source assets kept outside the repo (uncomment if they get added)
+# *.blend
+# *.blend1
+# *.fbx
+
+# Playwright MCP capture output
+.playwright-mcp/

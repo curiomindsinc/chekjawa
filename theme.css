@@ -1,0 +1,953 @@
+/* ============================================================
+   theme.css — the base44-style UI shell.
+   Dark glassy panels · sea-green accent · mono labels · rounded.
+   (Same shell as the savanna/reef; only the accent + glass tint
+   change — the variable names keep the word "teal" so every theme
+   stays swap-compatible.)
+   ============================================================ */
+
+:root {
+  --teal: #5fe3c4;                          /* intertidal sea-green accent */
+  --teal-dim: #2f9f8a;
+  --glass: rgba(8, 22, 26, 0.78);           /* cool dark glass */
+  --glass-border: rgba(95, 227, 196, 0.26);
+  --text: #e4f2ee;
+  --text-dim: #94b3ae;
+  --mono: Consolas, 'Courier New', monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #0a1c20;
+  font-family: var(--mono);
+  color: var(--text);
+  user-select: none;
+}
+
+#scene-holder, #scene-holder canvas { position: absolute; inset: 0; display: block; }
+
+.hidden { display: none !important; }
+
+.glass {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+}
+
+/* ------------------------- top bar ------------------------- */
+
+#topbar {
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+  padding: 10px 26px;
+  border-radius: 999px;
+  font-weight: bold; font-size: 15px;
+  color: var(--teal);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+#topright {
+  position: absolute; top: 14px; right: 16px;
+  display: flex; gap: 10px;
+  z-index: 12;
+}
+
+.round-btn {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  color: var(--teal);
+  font-size: 18px;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+.round-btn:hover { border-color: var(--teal); }
+.round-btn svg { vertical-align: middle; }
+
+/* --------------- weather trigger popup (🌦) --------------- */
+/* Lightweight anchored control popup: sits above the canvas and the
+   overlay panels (foodweb/pop 40, toast 30) but below the inspect card
+   (60) and the intro overlay (100) — it's a quick action menu, not a
+   modal that needs to trap the screen. */
+#weather-panel {
+  position: absolute; top: 66px; right: 16px;
+  width: 176px;
+  padding: 12px;
+  display: flex; flex-direction: column; gap: 8px;
+  z-index: 50;
+}
+#weather-panel .wx-title {
+  color: var(--teal); font-weight: bold; letter-spacing: 2px;
+  font-size: 11px; text-align: center; margin-bottom: 2px;
+}
+.wx-opt {
+  display: block; width: 100%;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: rgba(95, 227, 196, 0.10);
+  color: var(--text);
+  font-family: var(--mono); font-size: 12.5px; font-weight: bold;
+  text-align: left;
+  cursor: pointer;
+}
+.wx-opt:hover { border-color: var(--teal); background: rgba(95, 227, 196, 0.20); }
+
+#vignette {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center,
+    rgba(0, 0, 0, 0) 58%, rgba(4, 20, 24, 0.42) 100%);
+  z-index: 5;
+}
+
+/* ---------------------- controls legend ---------------------- */
+
+#controls {
+  position: absolute; left: 16px; bottom: 16px;
+  padding: 12px 16px;
+  min-width: 210px;
+  font-size: 12px;
+  z-index: 10;
+}
+#controls .panel-title {
+  color: var(--teal);
+  font-weight: bold; letter-spacing: 2px;
+  font-size: 12px; margin-bottom: 8px;
+}
+#controls .ctl-row { display: flex; gap: 10px; padding: 3px 0; }
+#controls .ctl-key {
+  color: var(--text);
+  font-weight: bold; min-width: 58px;
+}
+#controls .ctl-desc { color: var(--text-dim); }
+
+/* ---------------------- organisms badge ---------------------- */
+
+#organisms-badge {
+  position: absolute; right: 16px; bottom: 16px;
+  padding: 12px 18px;
+  text-align: right;
+  z-index: 10;
+}
+#organisms-badge .badge-label {
+  font-size: 11px; letter-spacing: 2px; color: var(--text-dim);
+}
+#organisms-badge .badge-count {
+  font-size: 22px; font-weight: bold; color: var(--teal);
+  margin: 2px 0;
+}
+#organisms-badge .badge-hint { font-size: 11px; color: var(--text-dim); }
+
+/* --------------------------- credit --------------------------- */
+
+#credit {
+  position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+  padding: 9px 20px;
+  text-align: center;
+  font-size: 12px;
+  z-index: 10;
+  white-space: nowrap;
+}
+#credit .credit-line { color: var(--text-dim); }
+#credit .credit-line b { color: var(--text); }
+#credit .credit-links { margin-top: 3px; color: var(--text-dim); }
+#credit .credit-links span,
+#credit .credit-links a { color: var(--teal); text-decoration: none; }
+#credit .credit-links a:hover { text-decoration: underline; }
+
+/* ------------------------ species panel ------------------------ */
+
+/* Sits to the LEFT of the tide gauge (190px + its 16px gutter), not under
+   it — the gauge is live instrumentation and must stay readable while the
+   panel is open. */
+#species-panel {
+  position: absolute; top: 72px; right: 222px;
+  width: 258px;
+  max-height: calc(100% - 170px);
+  display: flex; flex-direction: column;
+  z-index: 11;
+  overflow: hidden;
+}
+#species-panel .panel-head {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--glass-border);
+}
+#species-panel .panel-head .panel-title {
+  color: var(--teal); font-weight: bold; letter-spacing: 2px; font-size: 13px;
+}
+#species-panel .panel-head .panel-sub {
+  font-size: 10.5px; color: var(--text-dim); margin-top: 4px;
+}
+#species-list { overflow-y: auto; padding: 6px 8px; flex: 1; }
+#species-list::-webkit-scrollbar { width: 6px; }
+#species-list::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 3px; }
+
+.species-group {
+  font-size: 10px; letter-spacing: 2px; color: var(--text-dim);
+  padding: 10px 8px 4px;
+}
+.species-row {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 8px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 12.5px;
+}
+.species-row:hover { background: rgba(95, 227, 211, 0.08); }
+.species-row.active {
+  border-color: var(--teal);
+  background: rgba(95, 227, 211, 0.12);
+}
+.species-emoji { font-size: 15px; }
+.species-name { flex: 1; }
+/* the tidal band the species lives in — the one number that explains why it
+   is where it is on this shore */
+.species-zone {
+  display: block;
+  font-size: 10px; color: var(--text-dim); letter-spacing: 0.3px;
+  margin-top: 2px;
+}
+/* catalogued, but nothing of it is spawned yet: still opens a fact card and
+   still appears in the food web, just cannot be followed */
+.species-row.not-yet { opacity: 0.55; }
+.species-row.not-yet:hover { background: rgba(240, 226, 200, 0.05); }
+.species-row.not-yet .species-name::after {
+  content: ' · soon';
+  font-size: 9.5px; letter-spacing: 1px; color: var(--text-dim);
+}
+/* a producer. Nothing to follow — that is the species, not a gap */
+.species-row.flora-row:hover { background: rgba(134, 201, 138, 0.08); }
+.info-btn {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--text-dim);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 11px; font-family: var(--mono); font-style: italic;
+  cursor: pointer; flex-shrink: 0;
+}
+.info-btn:hover { border-color: var(--teal); color: var(--teal); }
+
+#follow-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px;
+  border-top: 1px solid var(--glass-border);
+  font-size: 12px;
+}
+.follow-text { min-width: 0; }
+#follow-label { color: var(--teal); font-weight: bold; }
+/* what the animal is doing right now, refreshed 4x a second by ui.js — the
+   tide changes it under you, which is the point of watching one individual */
+#follow-state {
+  display: block;
+  font-size: 10.5px; color: var(--text-dim);
+  margin-top: 2px; padding-left: 17px;
+}
+#follow-stop {
+  background: none; border: none;
+  color: var(--text-dim); font-family: var(--mono); font-size: 12px;
+  cursor: pointer;
+}
+#follow-stop:hover { color: var(--text); }
+
+/* ------------------------- inspect card (2 pages) ------------------------- */
+
+#inspect-card {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: min(440px, calc(100% - 40px));
+  max-height: calc(100% - 60px);
+  padding: 0;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  z-index: 60;
+}
+
+/* ---- banner (header) ---- */
+.card-banner {
+  position: relative;
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 16px 18px 14px;
+  background: linear-gradient(135deg, rgba(95, 227, 196, 0.30), rgba(47, 159, 138, 0.12));
+  border-bottom: 1px solid var(--glass-border);
+}
+.card-icon {
+  width: 46px; height: 46px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--glass-border);
+  flex-shrink: 0;
+}
+.card-head-text { flex: 1; min-width: 0; }
+.card-badge {
+  display: inline-block;
+  font-size: 9.5px; letter-spacing: 1.5px; font-weight: bold;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--glass-border);
+  padding: 2px 9px; border-radius: 999px;
+}
+.card-name { font-size: 17px; font-weight: bold; color: var(--text); margin-top: 5px; }
+.card-role { font-size: 12px; color: var(--teal); margin-top: 1px; }
+.card-dots { display: flex; gap: 6px; margin-top: 9px; }
+.card-dots span {
+  width: 14px; height: 4px; border-radius: 2px;
+  background: rgba(255, 255, 255, 0.22); transition: all .15s;
+}
+.card-dots span.on { background: var(--teal); width: 20px; }
+#card-close {
+  position: absolute; top: 12px; right: 14px;
+  background: none; border: none; color: var(--text-dim);
+  font-size: 16px; cursor: pointer; font-family: var(--mono);
+}
+#card-close:hover { color: var(--text); }
+#card-follow {
+  margin-top: 9px;
+  padding: 5px 13px; border-radius: 999px;
+  border: 1px solid var(--teal);
+  background: rgba(95, 227, 196, 0.12);
+  color: var(--teal);
+  font-family: var(--mono); font-size: 11px; font-weight: bold;
+  cursor: pointer;
+}
+#card-follow:hover { background: rgba(95, 227, 196, 0.22); }
+
+/* ---- scrolling body ---- */
+.card-body-scroll { overflow-y: auto; padding: 16px 18px; }
+.card-body-scroll::-webkit-scrollbar { width: 6px; }
+.card-body-scroll::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 3px; }
+
+.sec-label {
+  font-size: 10.5px; letter-spacing: 2px; color: var(--text-dim);
+  font-weight: bold; margin: 15px 0 7px;
+}
+.card-page > .sec-label:first-child { margin-top: 0; }
+.sec-label.accent { color: var(--teal); }
+.sec-text { font-size: 12px; line-height: 1.55; color: var(--text); }
+
+/* fun fact box */
+.fun-fact {
+  display: flex; gap: 10px;
+  background: rgba(95, 227, 196, 0.10);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px; padding: 11px 13px; margin-top: 14px;
+}
+.fun-ico { font-size: 16px; line-height: 1.2; }
+.fun-label { font-size: 10px; letter-spacing: 1.5px; color: var(--teal); font-weight: bold; margin-bottom: 3px; }
+.fun-fact p { font-size: 11.5px; line-height: 1.5; color: var(--text); }
+
+/* adaptation cards */
+.adapt-item {
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 10px 12px; margin-bottom: 8px;
+}
+.adapt-title { font-size: 12.5px; font-weight: bold; color: var(--text); }
+.adapt-text { font-size: 11.5px; line-height: 1.5; color: var(--text-dim); margin-top: 3px; }
+
+/* ---- footer nav ---- */
+.card-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 18px;
+  border-top: 1px solid var(--glass-border);
+}
+#card-page-ind { font-size: 11px; color: var(--text-dim); letter-spacing: 1px; }
+.nav-btn {
+  background: none; border: 1px solid transparent; color: var(--text-dim);
+  font-family: var(--mono); font-size: 12px; font-weight: bold; cursor: pointer;
+  padding: 6px 10px; border-radius: 8px;
+}
+.nav-btn:hover { color: var(--text); }
+.nav-btn.primary {
+  border: 1px solid var(--teal); color: var(--teal);
+  background: rgba(95, 227, 196, 0.12);
+  padding: 6px 16px; border-radius: 999px;
+}
+.nav-btn.primary:hover { background: rgba(95, 227, 196, 0.22); }
+.nav-btn.nav-disabled { opacity: 0.3; pointer-events: none; }
+.card-hint { text-align: center; font-size: 10px; color: var(--text-dim); padding: 0 0 12px; }
+
+/* --------------------------- food web panel --------------------------- */
+
+#fw-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(12, 7, 2, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 40;
+}
+#fw-modal {
+  width: min(1120px, calc(100% - 48px));
+  height: min(88%, 820px);
+  display: flex; flex-direction: column;
+  border-radius: 18px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.fw-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 18px 22px 12px;
+}
+.fw-title { color: var(--teal); font-weight: bold; font-size: 17px; }
+.fw-sub { color: var(--text-dim); font-size: 12px; margin-top: 4px; }
+.fw-close {
+  background: none; border: none; color: var(--text-dim);
+  font-size: 17px; cursor: pointer; font-family: var(--mono);
+}
+.fw-close:hover { color: var(--text); }
+
+.fw-legend {
+  display: flex; flex-wrap: wrap; gap: 18px;
+  padding: 4px 22px 14px;
+  font-size: 11.5px; color: var(--text-dim);
+  border-bottom: 1px solid var(--glass-border);
+}
+.fw-legend span { display: flex; align-items: center; gap: 7px; }
+.fw-legend .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.fw-legend .dot.amber { background: #f0b24e; }
+.fw-legend .dot.red { background: #e8663f; }
+.fw-legend .dot.green { background: #6fd36f; }
+.fw-legend .dot.teal { background: #5fe3d3; }
+.fw-legend .dash { width: 16px; height: 0; border-top: 2px dashed #b98cff; display: inline-block; }
+
+/* graph area */
+.fw-graph { position: relative; flex: 1; overflow: auto; min-height: 0; }
+#fw-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+.fw-link { vector-effect: non-scaling-stroke; }
+.fw-link.base    { stroke: rgba(240, 226, 200, 0.10); stroke-width: 1; }
+.fw-link.dim     { stroke: rgba(240, 226, 200, 0.05); stroke-width: 1; }
+.fw-link.eats    { stroke: #f0b24e; stroke-width: 2.2; filter: drop-shadow(0 0 3px rgba(240,178,78,0.6)); }
+.fw-link.eatenby { stroke: #e8663f; stroke-width: 2.2; filter: drop-shadow(0 0 3px rgba(232,102,63,0.6)); }
+.fw-link.scav-base { stroke: rgba(111, 211, 111, 0.14); stroke-width: 1; }
+.fw-link.scavenge  { stroke: #6fd36f; stroke-width: 2.2; filter: drop-shadow(0 0 3px rgba(111,211,111,0.6)); }
+.fw-link.symb-base { stroke: rgba(185, 140, 255, 0.18); stroke-width: 1; stroke-dasharray: 2.5 2; }
+.fw-link.symb      { stroke: #b98cff; stroke-width: 2; stroke-dasharray: 3 2; filter: drop-shadow(0 0 3px rgba(185,140,255,0.6)); }
+
+.fw-rows { position: absolute; inset: 0; pointer-events: none; }
+.fw-row-label {
+  position: absolute; left: 16px; transform: translateY(-50%);
+  font-size: 10.5px; letter-spacing: 1.5px; font-weight: bold;
+}
+.fw-row-label.lv-apex { color: #e8663f; }
+.fw-row-label.lv-pred { color: #e8663f; }
+.fw-row-label.lv-filt { color: #6fa8ff; }   /* filter feeders — plankton out of the water column */
+.fw-row-label.lv-depo { color: #c98a5a; }   /* deposit feeders — detritus off the mud surface */
+.fw-row-label.lv-scav { color: #c9a24b; }
+.fw-row-label.lv-symb { color: #b98cff; }
+.fw-row-label.lv-herb { color: var(--teal); }
+.fw-row-label.lv-prod { color: #86c98a; }
+
+.fw-nodes { position: absolute; inset: 0; }
+.fw-node {
+  position: absolute; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  cursor: pointer; width: 92px;
+}
+.fw-node-ico {
+  width: 46px; height: 46px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+  background: rgba(20, 13, 5, 0.92);
+  border: 1.5px solid var(--glass-border);
+  transition: transform .12s, box-shadow .12s, border-color .12s;
+}
+.fw-node-label {
+  font-size: 11px; color: var(--text); text-align: center;
+  white-space: nowrap; text-shadow: 0 1px 3px #000;
+}
+.fw-node:hover .fw-node-ico { border-color: var(--teal); transform: scale(1.08); }
+
+.fw-node.selected .fw-node-ico {
+  border-color: #5fe3d3;
+  box-shadow: 0 0 0 4px rgba(95,227,211,0.22), 0 0 16px rgba(95,227,211,0.55);
+}
+.fw-node.hl-eats .fw-node-ico    { border-color: #f0b24e; box-shadow: 0 0 12px rgba(240,178,78,0.5); }
+.fw-node.hl-eatenby .fw-node-ico { border-color: #e8663f; box-shadow: 0 0 12px rgba(232,102,63,0.5); }
+.fw-node.hl-scavenge .fw-node-ico { border-color: #6fd36f; box-shadow: 0 0 12px rgba(111,211,111,0.5); }
+.fw-node.hl-symb .fw-node-ico    { border-color: #b98cff; box-shadow: 0 0 12px rgba(185,140,255,0.5); }
+.fw-node.dim { opacity: 0.32; }
+
+/* detail bar */
+.fw-detail {
+  border-top: 1px solid var(--glass-border);
+  padding: 14px 22px 16px;
+  background: rgba(0, 0, 0, 0.24);
+}
+.fw-detail-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.fw-detail-name { display: flex; align-items: center; gap: 12px; }
+.fw-detail-ico {
+  width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; font-size: 22px;
+  background: rgba(20, 13, 5, 0.9); border: 1px solid var(--glass-border);
+}
+.fw-dn { font-weight: bold; color: var(--text); font-size: 15px; }
+.fw-dr { color: var(--teal); font-size: 12px; }
+.fw-factbtn {
+  padding: 8px 14px; border-radius: 999px;
+  border: 1px solid var(--teal); background: rgba(240,178,78,0.12);
+  color: var(--teal); font-family: var(--mono); font-size: 12px; font-weight: bold;
+  cursor: pointer;
+}
+.fw-factbtn:hover { background: rgba(240,178,78,0.22); }
+
+.fw-cols { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.fw-col {
+  background: rgba(20, 13, 5, 0.5);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px; padding: 10px 12px;
+}
+.fw-col-label { font-size: 10px; letter-spacing: 1.5px; font-weight: bold; margin-bottom: 8px; }
+.fw-col.eats .fw-col-label    { color: #f0b24e; }
+.fw-col.eatenby .fw-col-label { color: #e8663f; }
+.fw-col.scav .fw-col-label    { color: #6fd36f; }
+.fw-col.symb .fw-col-label    { color: #b98cff; }
+.fw-none { font-size: 11.5px; color: var(--text-dim); }
+.fw-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin: 0 6px 6px 0;
+  padding: 5px 10px; border-radius: 8px;
+  background: rgba(95, 227, 196, 0.10);
+  border: 1px solid var(--glass-border);
+  color: var(--text); font-family: var(--mono); font-size: 11.5px;
+  cursor: pointer;
+}
+.fw-chip:hover { border-color: var(--teal); }
+
+@media (max-width: 720px) {
+  .fw-cols { grid-template-columns: 1fr; }
+  .fw-node { width: 66px; }
+  .fw-node-ico { width: 38px; height: 38px; font-size: 20px; }
+}
+
+/* --------------------------- hunt demo --------------------------- */
+
+#hunt-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(12, 7, 2, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 45;
+}
+#hunt-modal {
+  width: min(420px, calc(100% - 48px));
+  max-height: 80%;
+  border-radius: 18px;
+  overflow: hidden;
+}
+#hunt-list { padding: 8px 10px 14px; overflow-y: auto; }
+.hunt-row-blurb { font-size: 10.5px; color: var(--text-dim); margin-top: 1px; }
+.hunt-row-go { color: var(--teal); font-size: 11px; flex-shrink: 0; }
+
+/* full-screen cinematic takeover while a hunt demo plays */
+#hunt-cine {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  z-index: 110;                     /* above everything, including the intro (100) */
+}
+#hunt-caption {
+  position: absolute; top: 22px; left: 50%; transform: translateX(-50%);
+  text-align: center;
+  padding: 12px 28px;
+  border-radius: 14px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(8px);
+  white-space: nowrap;
+}
+#hunt-cine-title { color: var(--teal); font-weight: bold; font-size: 15px; letter-spacing: 0.5px; }
+#hunt-cine-status { color: var(--text-dim); font-size: 12px; margin-top: 4px; }
+#hunt-cine-actions {
+  position: absolute; bottom: 34px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 12px;
+  pointer-events: auto;
+}
+#hunt-cine-actions .nav-btn { padding: 9px 20px; }
+
+/* hide the normal chrome while the hunt-demo cinematic is active */
+body.hunt-active #topbar, body.hunt-active #topright, body.hunt-active #controls,
+body.hunt-active #organisms-badge, body.hunt-active #credit,
+body.hunt-active #species-panel, body.hunt-active #inspect-card, body.hunt-active #toast {
+  display: none !important;
+}
+
+/* ------------------------ cinematic / film trailer ------------------------
+   Chrome only. The sim keeps rendering and simulating underneath — these are
+   letterbox bars laid OVER the live canvas, not a cutscene surface. */
+
+body.cine-active #topbar, body.cine-active #topright, body.cine-active #controls,
+body.cine-active #organisms-badge, body.cine-active #credit,
+body.cine-active #species-panel, body.cine-active #inspect-card, body.cine-active #toast,
+body.cine-active #weather-panel {
+  display: none !important;
+}
+/* the camera is script-driven for the duration, so swallow stray drags */
+body.cine-active #scene-holder { cursor: default; }
+
+#cine-overlay {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  z-index: 95;                       /* under the intro (100), over everything else */
+}
+
+.cine-bar {
+  position: absolute; left: 0; width: 100%;
+  height: 8.5%;
+  background: #000;
+}
+.cine-bar.top { top: 0; }
+.cine-bar.bottom { bottom: 0; }
+
+#cine-time {
+  position: absolute; top: calc(8.5% + 18px); left: 26px;
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--mono); font-size: 15px; letter-spacing: 0.12em;
+  color: var(--text);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
+}
+.cine-dot {
+  display: block; width: 9px; height: 9px; border-radius: 50%;
+  background: #e0503a;
+  animation: cine-blink 1s steps(1, end) infinite;
+}
+@keyframes cine-blink { 0%, 55% { opacity: 1; } 56%, 100% { opacity: 0.15; } }
+
+/* Lower third. Sits just above the bottom bar so it never collides with it. */
+#cine-caption {
+  position: absolute; left: 26px; bottom: calc(8.5% + 26px);
+  max-width: 62%;
+}
+#cine-cap {
+  font-family: var(--mono); font-size: 25px; font-weight: bold;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--teal);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
+}
+#cine-sub {
+  margin-top: 6px;
+  font-family: var(--mono); font-size: 14.5px; letter-spacing: 0.05em;
+  color: var(--text);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
+}
+
+#cine-skip {
+  position: absolute; right: 26px; bottom: calc(8.5% + 26px);
+  pointer-events: auto;
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  backdrop-filter: blur(8px);
+  color: var(--text);
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.12em;
+  cursor: pointer;
+}
+#cine-skip:hover { border-color: var(--teal); color: var(--teal); }
+
+/* --------------------------- intro overlay --------------------------- */
+
+#intro-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(12, 7, 2, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 100;
+}
+
+#intro-card {
+  width: min(420px, calc(100% - 40px));
+  padding: 22px 26px 24px;
+  text-align: center;
+  border-radius: 18px;
+}
+
+.intro-dots {
+  display: flex; gap: 7px; justify-content: center;
+  margin-bottom: 18px;
+}
+.intro-dots span {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.20); transition: all .18s;
+}
+.intro-dots span.on { background: var(--teal); width: 22px; border-radius: 4px; }
+
+.intro-icon { font-size: 34px; line-height: 1; margin-bottom: 12px; }
+.intro-title {
+  font-size: 19px; font-weight: bold; color: var(--text);
+  margin-bottom: 10px;
+}
+.intro-body {
+  font-size: 13px; line-height: 1.6; color: var(--text-dim);
+  margin: 0 auto;
+}
+
+/* extra blocks (chips / pill / rows) */
+.intro-extra:not(:empty) { margin-top: 16px; }
+
+.intro-chips, .intro-pill, .intro-rows {
+  background: rgba(0, 0, 0, 0.24);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 12px;
+}
+.intro-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.intro-chip {
+  font-size: 12px; color: var(--text);
+  background: rgba(95, 227, 196, 0.12);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px; padding: 5px 12px;
+}
+.intro-chip b { color: var(--teal); font-weight: bold; margin-right: 3px; }
+
+.intro-pill {
+  font-size: 13px; font-weight: bold; color: var(--teal);
+  letter-spacing: 0.3px;
+}
+
+.intro-rows { padding: 8px 12px 10px; }
+.intro-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 4px; font-size: 13px; color: var(--text);
+  border-bottom: 1px solid rgba(95, 227, 196, 0.10);
+}
+.intro-row:last-of-type { border-bottom: none; }
+.intro-row-cta { color: var(--teal); font-size: 12px; font-weight: bold; }
+.intro-row-hint { font-size: 11px; color: var(--text-dim); margin-top: 6px; }
+
+/* nav */
+.intro-nav { display: flex; gap: 12px; margin-top: 22px; }
+.intro-back {
+  flex: 0 0 auto;
+  padding: 12px 22px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  background: rgba(0, 0, 0, 0.24);
+  color: var(--text-dim);
+  font-family: var(--mono); font-size: 13px; font-weight: bold;
+  cursor: pointer;
+}
+.intro-back:hover { color: var(--text); border-color: var(--teal); }
+.intro-next {
+  flex: 1;
+  padding: 12px 22px;
+  border-radius: 12px; border: none;
+  background: linear-gradient(135deg, var(--teal), var(--teal-dim));
+  color: #241603;
+  font-family: var(--mono); font-size: 14px; font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(95, 227, 196, 0.28);
+}
+.intro-next:hover { filter: brightness(1.06); }
+.intro-next.full { flex: 1; }
+
+/* pulsing highlight ring over the list icon */
+#intro-ring {
+  position: absolute;
+  border: 2px solid var(--teal);
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(95, 227, 196, 0.18), 0 0 18px rgba(95, 227, 196, 0.55);
+  pointer-events: none;
+  z-index: 101;
+  animation: introPulse 1.4s ease-in-out infinite;
+}
+.intro-ring-label {
+  position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  margin-top: 6px;
+  font-size: 12px; font-weight: bold; color: var(--teal);
+  font-family: var(--mono); white-space: nowrap;
+}
+@keyframes introPulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(95, 227, 196, 0.18), 0 0 14px rgba(95, 227, 196, 0.45); }
+  50%      { box-shadow: 0 0 0 7px rgba(95, 227, 196, 0.10), 0 0 22px rgba(95, 227, 196, 0.70); }
+}
+
+/* ---------------------- population tracker (📊) ---------------------- */
+
+#pop-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(12, 7, 2, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 40;
+}
+#pop-modal {
+  width: min(860px, calc(100% - 48px));
+  height: min(86%, 720px);
+  display: flex; flex-direction: column;
+  border-radius: 18px; padding: 0; overflow: hidden;
+}
+.pop-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 18px 22px 10px;
+}
+.pop-title { color: var(--teal); font-weight: bold; font-size: 17px; }
+.pop-sub { color: var(--text-dim); font-size: 12px; margin-top: 4px; }
+.pop-close {
+  background: none; border: none; color: var(--text-dim);
+  font-size: 17px; cursor: pointer; font-family: var(--mono);
+}
+.pop-close:hover { color: var(--text); }
+
+.pop-legend {
+  display: flex; gap: 22px;
+  padding: 2px 22px 12px;
+  font-size: 12.5px; color: var(--text-dim);
+  border-bottom: 1px solid var(--glass-border);
+}
+.pop-legend span { display: flex; align-items: center; gap: 7px; }
+.pop-legend b { color: var(--text); font-size: 14px; }
+.pop-legend .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+.pop-legend .dot.carn { background: #e8663f; }
+.pop-legend .dot.prey { background: #6fd36f; }
+
+/* graph (scrolls horizontally — pan back up to 10 min) */
+.pop-scale { margin-left: auto; color: var(--text-dim); }
+.pop-graph { position: relative; margin: 14px 22px 6px; flex: 1; min-height: 150px;
+  overflow-x: auto; overflow-y: hidden;
+  border-left: 1px solid var(--glass-border); border-bottom: 1px solid var(--glass-border); }
+.pop-plot { position: relative; height: 100%; min-width: 100%; }
+#pop-svg { position: absolute; top: 0; left: 0; height: 100%; display: block; }
+.pop-line { fill: none; vector-effect: non-scaling-stroke; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
+.pop-line.carn { stroke: #e8663f; filter: drop-shadow(0 0 3px rgba(232,102,63,0.55)); }
+.pop-line.prey { stroke: #6fd36f; filter: drop-shadow(0 0 3px rgba(111,211,111,0.55)); }
+.pop-xaxis { position: absolute; left: 0; bottom: 2px; height: 14px; width: 100%; pointer-events: none; }
+.pop-xaxis span { position: absolute; transform: translateX(-50%); font-size: 10px; color: var(--text-dim); white-space: nowrap; }
+.pop-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: var(--text-dim); font-size: 12px; text-align: center; padding: 0 20px; }
+
+/* per-species breakdown */
+.pop-breakdown { display: flex; gap: 18px; padding: 8px 22px 18px; }
+.pop-col { flex: 1; }
+.pop-col-head { font-size: 10.5px; letter-spacing: 1.5px; font-weight: bold; margin-bottom: 6px; }
+.pop-col-head.carn { color: #e8663f; }
+.pop-col-head.prey { color: #6fd36f; }
+.pop-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 12.5px; }
+.pop-emoji { width: 18px; text-align: center; }
+.pop-name { flex: 1; color: var(--text); }
+.pop-tag { font-size: 10px; color: #f0b24e; }
+.pop-num { color: var(--text); font-weight: bold; min-width: 22px; text-align: right; }
+
+/* ---------------------------- toast ---------------------------- */
+
+#toast {
+  position: absolute; top: 76px; left: 50%; transform: translateX(-50%);
+  padding: 10px 20px;
+  border-radius: 999px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--text);
+  font-size: 12.5px;
+  z-index: 30;
+}
+
+/* ---------------------------- tide gauge ----------------------------
+   The one panel this biome cannot do without. The stripes are the shore
+   bands at their real heights, so the marker's position IS the answer to
+   "what's exposed right now" — no legend lookup needed. */
+
+#tide-panel {
+  position: absolute; top: 70px; right: 16px;
+  width: 190px;
+  padding: 12px 14px 14px;
+  z-index: 12;
+}
+#tide-panel .panel-title {
+  font-size: 10px; letter-spacing: 2px; color: var(--teal);
+  margin-bottom: 8px;
+}
+
+.tide-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 8px;
+}
+#tide-readout { font-size: 20px; font-weight: bold; color: var(--text); }
+.tide-state { font-size: 10.5px; letter-spacing: 0.5px; }
+.tide-state.flood { color: #6fc7e8; }
+.tide-state.ebb   { color: var(--teal); }
+.tide-state.held  { color: var(--text-dim); }
+
+.gauge-wrap { position: relative; height: 168px; margin: 6px 0 10px; }
+#gauge-col {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 30px;
+  border-radius: 5px; overflow: hidden;
+  border: 1px solid var(--glass-border);
+}
+.gauge-band { position: absolute; left: 0; right: 0; opacity: 0.85; }
+
+/* reference heights: where a neap low stops vs where a spring low stops.
+   The gap between them is the habitat the envelope buys. */
+.gauge-ref {
+  position: absolute; left: 30px; right: 0; height: 0;
+  border-top: 1px dashed rgba(228, 242, 238, 0.30);
+}
+.gauge-ref span {
+  position: absolute; left: 6px; top: -11px;   /* sit ABOVE the dashed rule, not on it */
+  font-size: 8.5px; letter-spacing: 0.5px; color: var(--text-dim);
+  white-space: nowrap;
+}
+.gauge-ref.strong { border-top-color: var(--teal); }
+.gauge-ref.strong span { color: var(--teal); }
+
+#gauge-marker {
+  position: absolute; left: -3px; width: 36px; height: 0;
+  border-top: 2px solid #ffffff;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+  transition: bottom 0.05s linear;
+}
+#gauge-marker i {
+  position: absolute; right: -7px; top: -4px;
+  width: 0; height: 0;
+  border: 4px solid transparent; border-right-color: #ffffff;
+}
+
+.tide-row {
+  display: flex; justify-content: space-between;
+  font-size: 11px; color: var(--text); padding: 2px 0;
+}
+.tide-key { color: var(--text-dim); }
+
+.spring-wrap { display: flex; align-items: center; gap: 7px; margin: 8px 0 4px; }
+.spring-track {
+  flex: 1; height: 5px; border-radius: 3px;
+  background: rgba(95, 227, 196, 0.14);
+  overflow: hidden;
+}
+#spring-fill { height: 100%; background: var(--teal); width: 50%; }
+#spring-label { font-size: 9px; letter-spacing: 1px; color: var(--teal); min-width: 62px; text-align: right; }
+
+.tide-btns { display: flex; gap: 6px; margin-top: 10px; }
+.tide-btns button {
+  font-family: var(--mono); font-size: 11px;
+  color: var(--text); cursor: pointer;
+  background: rgba(95, 227, 196, 0.10);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+.tide-btns button:hover { background: rgba(95, 227, 196, 0.22); }
+.tide-btns button.on { border-color: var(--teal); color: var(--teal); }
+#btn-springlow { flex: 1; }
+
+#tide-scrub {
+  width: 100%; margin-top: 8px;
+  accent-color: var(--teal);
+}
+.tide-hint {
+  font-size: 9px; color: var(--text-dim); text-align: center; margin-top: 5px;
+  letter-spacing: 0.5px;
+}
