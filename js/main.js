@@ -37,6 +37,12 @@
      sets off its ink (§27). First time one population on this shore has been
      handed another — kept as an optional argument so neither depends on it. */
   var seahares = SeaHares.spawn(scene, world, { seastars: seastars.stars });
+  /* The egret takes the crab array for the same reason (§30): a standing
+     heron is what sends a fiddler down its hole, and until now only the
+     flood could do that. Optional again — neither population needs the
+     other to exist. It is also the one species here that is NOT always
+     on the plot; at high tide it is genuinely gone. */
+  var egrets = Egrets.spawn(scene, world, { crabs: crabs.crabs });
 
   /* The species panel, follow mode and the food web all read species.js.
      `pops` is the only wiring they need: it maps a species' `sim` key to
@@ -45,7 +51,7 @@
      body to follow yet (BUILD_GUIDE §11). */
   UI.init({
     rig: rig, camera: camera, scene: scene, world: world,
-    pops: { fiddler: crabs.crabs, mudskipper: mudskippers.fish, barnacle: barnacles.barnacles, nerite: nerites.snails, conch: conches.conches, seastar: seastars.stars, seahare: seahares.hares }
+    pops: { fiddler: crabs.crabs, mudskipper: mudskippers.fish, barnacle: barnacles.barnacles, nerite: nerites.snails, conch: conches.conches, seastar: seastars.stars, seahare: seahares.hares, egret: egrets.birds }
   });
 
   window.addEventListener('resize', function () {
@@ -69,6 +75,7 @@
     conches.update(dt, simTime);
     seastars.update(dt, simTime);
     seahares.update(dt, simTime);
+    egrets.update(dt, simTime);
     tideUI.update(dt, simTime);
     UI.update(dt);
     rig.update(dt);
@@ -89,5 +96,6 @@
   window.__conches = conches;
   window.__seastars = seastars;
   window.__seahares = seahares;
+  window.__egrets = egrets;
   window.__cam = camera;
 })();

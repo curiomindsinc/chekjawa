@@ -1619,3 +1619,81 @@ the flat has already gone over — and one "Seagrass" line would hide exactly th
 - Hermit crab (the SCAVENGERS row is still empty), horn snail, little egret.
 - *Ulva*, *Sargassum* — the last two producers.
 - The rest of §1's v2 list, and the **true goby** §24 still owes §5.
+
+---
+
+## 30. Little egret — `js/egretbody.js` + `js/egrets.js` (2026-08-13)
+
+§1's stretch goal, listed there for one reason: "a single animal that demonstrates the whole
+tidal-predator switch in one shot." It is also the first **bird**, and the first animal on this
+shore that is **not always here**.
+
+### A visitor, not a resident
+
+Everything else in the roster is on the plot at all times — down a burrow, buried, clamped shut,
+lying in a pool — and the tide only decides what it is *doing*. The egret flies in when the flat
+drains and leaves when the water returns, so at high tide this species' population on the plot is
+genuinely **zero** and the sky is empty. That is the point: the fiddler crab shows the tidal
+switch from below (it comes up as the water leaves), the egret shows it from above, and the same
+falling tide hands one guild to the other.
+
+Measured over eight cycles: **away 54%, hunting 25%, in flight 21%.** The first pass had it
+flying more than hunting (22.5k frames against 9.1k) because the staging point was 50–80 m beyond
+the plot edge at 7.5 m/s. Cut to 12–34 m at a real egret's 11 m/s.
+
+### The hunt is three speeds
+
+A heron hunting is a slow wade, a dead freeze with the neck folded, and a strike too fast to
+follow — and the *contrast* is the animal. Anything that moves at one speed reads as poultry. So
+`STAB_SECS` is 0.12 against a freeze that runs up to 6 s, and the recovery is deliberately four
+times the strike. Of on-plot time: freeze 12%, wade 11%, stab 1%, foot-stir 1%.
+
+The neck is **three limb segments posed per frame**, not a baked curve — folded runs
+back-up-forward (the S), extended is three copies of one vector (the spear), and `neckOut`
+interpolates. Same technique as the crab's cheliped, and it is what lets one number drive the
+cock-and-fire.
+
+Foot-stirring is in because little egrets really do it: vibrate one foot in the sediment to flush
+whatever is hiding, then watch the spot.
+
+### It does not kill anything, and that is a decision
+
+There is no mortality path anywhere in this sim — §24 removed the last one — and adding one for a
+predator that is off the plot half the time would mean respawns, counts and empty burrows for
+very little on screen. What is modelled is the half that *shows*: the strike, and the **panic**.
+
+A fiddler crab within 4.6 m of a standing egret bolts for its hole, using the crab's own existing
+flee path — the flood's path — so nothing new had to be taught to that species beyond another
+reason to run. **This makes species.js's "bolts at the first sign of water or a shadow overhead"
+true**; until now only water could do it. A crab that went down scared also stays down 6–16 s
+rather than 0.4–6, because it has no way of knowing the heron has moved on. **42 panics over eight
+tide cycles** — often enough to catch, rare enough to be worth catching.
+
+The food web still lists fiddler and mudskipper as prey, because that is what the animal eats;
+the catalog describes the shore, not the simulation's bookkeeping.
+
+### Two bugs, both invisible in review
+
+- **The torso was never drawn.** `drawBird` placed the neck, head, bill, eyes, legs, feet, wings,
+  tail and plumes, and never once touched `R.body` — so the bird was a set of limbs orbiting a
+  hole. Obvious in the first screenshot, invisible in the code.
+- **The -90 again, fourth time on this build** (§20 crab claw, §21 goby, §27 sea hare). Bodies are
+  built along +X and every heading here is `atan2(dx, dz)`, a +Z bearing; a yaw rotation about Y
+  sends +X to `(cos a, 0, -sin a)`, so matching needs `a = yaw - PI/2`. Caught, as every previous
+  time, by asking for a broadside view and getting a bird facing the camera.
+
+**Decompose the instance matrices instead of squinting at the render.** Reading each part's world
+y back out of its matrix — feet 0.03–0.06 above ground, neck stacking 0.70 → 0.99, head 1.03,
+wings at the shoulder — settled the whole skeleton in one call and would have found the missing
+torso immediately.
+
+### Cost
+
+Ten InstancedMeshes for five birds. The bird is mostly posed limbs rather than a solid, so it is
+the most expensive animal here per individual and the cheapest per population.
+
+### Still owed
+
+- Hermit crab (SCAVENGERS is still empty), horn snail.
+- *Ulva*, *Sargassum*; the rest of §1's v2 list.
+- The **true goby** §24 still owes §5, and an APEX PREDATORS row when the otter lands.

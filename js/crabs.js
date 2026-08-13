@@ -318,6 +318,7 @@
         fed: 0.5,                           // smoothed "the sediment here is worth working"
         sifting: false,                     // a claw-load is in progress
         pellet: 0, pellets: 0,              // ring-buffer write slot, and how many are out
+        scared: 0,                          // set by egrets.js — a scare keeps it down longer (§30)
         washed: true                        // pellet field already cleared for this flood
       };
       crabs.push(c);
@@ -578,7 +579,17 @@
           case 'diving':
             c.act = 'diving';
             c.sink += dt / 0.34;
-            if (c.sink >= 1) { c.sink = 1; c.state = 'down'; c.wait = range(0.4, 6); }
+            if (c.sink >= 1) {
+              c.sink = 1; c.state = 'down';
+              /* A crab that went down because of the FLOOD comes back up
+                 as soon as the water lets it. One that went down because
+                 something was standing over it stays down a good while
+                 longer (§30) — it has no way of knowing the heron has
+                 moved on, and popping straight back up would undo the
+                 whole point of the scare. */
+              c.wait = c.scared ? range(6, 16) : range(0.4, 6);
+              c.scared = 0;
+            }
             break;
         }
 

@@ -60,6 +60,19 @@
         diving:  'running for the burrow'
       }
     },
+    egret: {
+      dist: 9,
+      lift: 0.9,                               // it is a metre tall — aim at the bird, not its feet
+      states: {
+        away:     'away from the shore',
+        inbound:  'flying in',
+        wade:     'wading the waterline',
+        freeze:   'frozen, watching',
+        stab:     'striking',
+        stir:     'stirring the mud with one foot',
+        outbound: 'leaving on the flood'
+      }
+    },
     barnacle: {
       dist: 4,
       lift: 0.20,

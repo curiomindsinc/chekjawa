@@ -237,6 +237,37 @@ var SPECIES = {
       { title: "Never far from water", text: "It works the wet margin and goes back to dip whenever it dries. The population strings itself along the waterline and walks up and down the shore with the tide." },
       { title: "Flying the dorsal", text: "A perched mudskipper raises its first dorsal fin like a sail to claim its patch of mud and warn off rivals." }
     ]
+  },
+
+  /* ---------------- the visitor ---------------- */
+
+  egret: {
+    emoji: '🕊️', name: 'Little Egret', group: 'THE VISITORS',
+    kind: 'animal', sim: 'egret',
+    category: 'BIRD', role: 'Predator · visitor',
+    zone: '0.9 – 2.3 m CD, while it is dry',
+    trophic: 'PREDATORS',
+    eats: ['fiddler', 'mudskipper'],
+    about: 'A small white heron that is only here for part of the day. It flies in as the tide ' +
+      'drops and the flat comes out of the water, works the waterline on black legs, and leaves ' +
+      'again when the sea covers its hunting ground. It hunts by standing still — a slow wade, a ' +
+      'long freeze with the neck folded back, then a strike faster than you can follow.',
+    why: 'The egret is the shore\'s reminder that a mudflat is not a closed world. Everything ' +
+      'else here spends its whole life between these tide marks; this one arrives from somewhere ' +
+      'else, takes what the low tide exposes, and goes. That is how the flat\'s productivity ' +
+      'leaves the flat — carried out of it on wings.',
+    funFact: 'The yellow feet on black legs are the field mark, and they may also be a tool: ' +
+      'egrets vibrate one foot in the sediment to flush hiding prey into the open.',
+    structural: [
+      { title: 'Dagger bill', text: 'Straight, sharp and pointed all the way out. It is a spear rather than a beak — the whole neck is the throwing arm behind it.' },
+      { title: 'Folded S-neck', text: 'Vertebrae stack into a spring at rest and unfold in one stroke, which is what makes the strike so much faster than the wade.' },
+      { title: 'Yellow feet, black legs', text: 'The mark that separates a little egret from every other white heron on this coast.' }
+    ],
+    behavioural: [
+      { title: 'Tidal commuter', text: 'Arrives on the ebb, leaves on the flood. Its working day is set by the water, not by the sun — though it does roost at night.' },
+      { title: 'Freeze and stab', text: 'Most of a hunting heron\'s time is spent doing nothing at all. The stillness is the hunting; the strike is only the end of it.' },
+      { title: 'Foot-stirring', text: 'Vibrates a foot in soft sediment to panic whatever is buried there into moving, then takes it as it runs.' }
+    ]
   }
 };
 
