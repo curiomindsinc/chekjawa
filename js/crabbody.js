@@ -222,12 +222,16 @@
   }
 
   /* Feeding pellets — the little balls of sifted sediment a deposit
-     feeder leaves scattered around its hole. Set dressing, but it is
-     the detail that says "something lives here" while the crab itself
-     is down the burrow, which is most of the tide. */
+     feeder leaves scattered around its hole. No longer set dressing:
+     since §28 each one is dropped where a crab finished a sift, so the
+     scatter is the record of where the biofilm went.
+
+     Sized off the real ratio. A fiddler's pellet is 2–4 mm against a
+     25 mm carapace, about 1:8; these were built at 1:16 and read as
+     grit specks at follow-cam range even with eight of them out. */
   function pellet() {
     var pos = sweep({
-      len: 0.10, rad: 0.048, seg: 6, rings: 3, round: 2.8,
+      len: 0.16, rad: 0.085, seg: 6, rings: 3, round: 2.8,
       jitter: 0.45, seed: 53, centred: true
     });
     return geom(pos, colorize(pos, function (t, u, i) { return pk(PELLET, i); }));

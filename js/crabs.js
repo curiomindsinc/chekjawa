@@ -21,7 +21,8 @@
      1. water at its burrow  — flee, immediately, no matter what
      2. tide rising to it    — flee early, before it arrives
      3. night                — go down; these are diurnal
-     4. otherwise            — feed near the burrow, and wave
+     4. otherwise            — sift the mud near the burrow, and wave
+                               (and range further out when it is thin)
 
    Waving is a male display and it is the thing people recognise, so it
    gets the most animation care: a bout of two to six sweeps, then a
@@ -29,10 +30,17 @@
    the burrow — activity peaks at low water, which is what a mudflat
    full of these actually looks like.
 
+   FEEDING IS WIRED TO THE BIOFILM (§7, §28). It was the last v1 species
+   still grazing a resource that did not exist. The sift now drains
+   `world.grazeFilm` and hands a PELLET back, so the crumb ring round a
+   hole is the record of where the film went — and the flood erases the
+   whole field twice a day. See the knobs below for why the rate is so
+   small: this is the most confined grazer on the shore.
+
    RENDERING. Nine InstancedMeshes for the animals (one per body part,
-   every crab holding a fixed slot in each) plus two static ones for
-   the burrows and their feeding pellets. Eleven draw calls for the
-   whole population. Parts come from crabbody.js already sized in BODY
+   every crab holding a fixed slot in each) plus one static mesh for the
+   burrow mouths and one live one for the pellets. Eleven draw calls for
+   the whole population. Parts come from crabbody.js already sized in BODY
    UNITS — carapace width 1.0 — and the per-crab matrix carries S,
    metres per body unit, so the animal has exactly one size knob.
    ============================================================ */
@@ -55,6 +63,33 @@
   var FLEE = 1.55;              // m/s, running for the burrow
   var STRIDE = 0.20;            // metres per gait cycle
   var MALES = 0.62;             // fraction with the oversized claw
+
+  /* ---------- feeding on the biofilm (§7, §28) ----------
+     THE MOST CONFINED GRAZER ON THE SHORE, so the tuning rule that bit
+     on the nerite bites twice as hard here: a grazer that cannot leave
+     its patch has to sit UNDER regrowth or it strips its ground and
+     then starves on it forever. Two things stack up against this
+     animal that did not against the snail:
+
+       - a territory 1.30 m wide is about one terrain node (3.0 x 1.5 m),
+         and burrows are only 1.5 m apart, so roughly three crabs share
+         the ground one of them is standing on;
+       - it feeds ONLY while the flat is dry and lit, which is exactly
+         when the film up here regrows slowest (biofilm.js DRY_RATE).
+
+     GRAZE_RATE is therefore small and it is per SIFT, not per second of
+     being out: a fiddler is not a scraper, it works in discrete
+     claw-loads while standing still. Between sift and sift it is
+     walking, and walking crabs eat nothing. */
+  var GRAZE_RATE = 0.055;       // film units per second, while actively sifting
+  var BARE = 0.06;              // below this the claw comes up with grit only
+  var GOOD = 0.34;              // above this the sediment is worth working
+  /* The two-threshold rule (see the sea hare, §27): BARE answers "is
+     there anything left", GOOD answers "is this worth staying for". One
+     cutoff pins the patch at exactly that value and the animal never
+     registers that it is hungry. */
+  var HUNGRY_REACH = 1.62;      // territory multiplier once the ring is worked out
+  var TRIES = 5;                // sediment patches compared per move
 
   /* Deterministic, like the rest of the build: same shore every load. */
   var seed = 90210;
@@ -162,11 +197,9 @@
     group.name = 'fiddler-crabs';
     scene.add(group);
 
-    /* ---------- static: holes and pellets ---------- */
+    /* ---------- the burrow mouths (static) ---------- */
     var mHole = new THREE.InstancedMesh(P.burrow, mat, Math.max(N, 1));
     mHole.receiveShadow = true;
-    var PELLETS_PER = 6;
-    var mPellet = new THREE.InstancedMesh(P.pellet, mat, Math.max(N * PELLETS_PER, 1));
     var m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
     var v = new THREE.Vector3(), sv = new THREE.Vector3();
     var i, j;
@@ -176,17 +209,59 @@
       var hs = S * range(0.85, 1.15);
       m4.compose(v.set(b.x, b.y + 0.01, b.z), q, sv.set(hs, hs, hs));
       mHole.setMatrixAt(i, m4);
-      for (j = 0; j < PELLETS_PER; j++) {
-        var a = range(0, Math.PI * 2), d = range(0.35, 1.05);
-        var px = b.x + Math.cos(a) * d, pz = b.z + Math.sin(a) * d;
-        q.setFromAxisAngle(UP, range(0, Math.PI * 2));
-        var ps = S * range(0.5, 0.95);
-        m4.compose(v.set(px, world.heightAt(px, pz) + 0.01 * S, pz), q, sv.set(ps, ps, ps));
-        mPellet.setMatrixAt(i * PELLETS_PER + j, m4);
-      }
     }
     mHole.instanceMatrix.needsUpdate = true;
-    mPellet.instanceMatrix.needsUpdate = true;
+
+    /* ---------- the pellet field (§28) ----------
+       These used to be six crumbs scattered round each hole at build
+       time and never touched again — set dressing. They are now the
+       RECEIPT for the grazing above: one pellet is dropped wherever a
+       crab finished a sift, so the litter accumulates exactly where the
+       film went, in a ring that thins with distance from the hole
+       because that is where the animal spends its time.
+
+       And the flood wipes it. Every pellet a crab has out is cleared
+       the moment its burrow goes under, which is what happens on a real
+       flat twice a day — the whole worked surface is erased and the
+       animal starts the next low tide on blank mud. Nothing else in
+       this sim shows the tide undoing a day's work.
+
+       Cost stays where it was: the same one InstancedMesh, the same
+       fixed slot budget, a ring buffer per crab so a long low tide
+       overwrites its own oldest crumbs instead of growing the mesh. */
+    var PELLETS_PER = 8;
+    var mPellet = new THREE.InstancedMesh(P.pellet, mat, Math.max(N * PELLETS_PER, 1));
+    mPellet.frustumCulled = false;
+    var pm4 = new THREE.Matrix4(), pq = new THREE.Quaternion();
+    var pv = new THREE.Vector3(), psv = new THREE.Vector3();
+    var ZERO = new THREE.Vector3(0, 0, 0);
+    var pelletDirty = false;
+
+    function clearPellet(slot) {
+      pm4.compose(pv.set(0, -999, 0), pq.identity(), ZERO);
+      mPellet.setMatrixAt(slot, pm4);
+      pelletDirty = true;
+    }
+    /* One finished claw-load of sifted grit, dropped at the crab's feet. */
+    function dropPellet(c, ci) {
+      var slot = ci * PELLETS_PER + c.pellet;
+      c.pellet = (c.pellet + 1) % PELLETS_PER;
+      if (c.pellets < PELLETS_PER) c.pellets++;
+      pq.setFromAxisAngle(UP, range(0, Math.PI * 2));
+      var ps = S * range(0.5, 0.95);
+      // just off the mouthparts, not under the body
+      var a = c.yaw + range(-0.9, 0.9);
+      var px = c.x + Math.sin(a) * 0.16, pz = c.z + Math.cos(a) * 0.16;
+      pm4.compose(pv.set(px, world.heightAt(px, pz) + 0.01 * S, pz), pq, psv.set(ps, ps, ps));
+      mPellet.setMatrixAt(slot, pm4);
+      pelletDirty = true;
+    }
+    function washPellets(c, ci) {
+      for (var s = 0; s < PELLETS_PER; s++) clearPellet(ci * PELLETS_PER + s);
+      c.pellets = 0; c.pellet = 0;
+    }
+    for (i = 0; i < N * PELLETS_PER; i++) clearPellet(i);
+
     group.add(mHole, mPellet);
 
     /* ---------- dynamic: the animals ----------
@@ -237,7 +312,13 @@
         wave: 0, waveT: 0, waveLeft: 0, waveRest: range(1, 8),
         scoop: 0, scoopT: range(0, 3),
         vis: false,
-        speed: range(0.85, 1.15)
+        speed: range(0.85, 1.15),
+        /* feeding (§28) */
+        act: 'down',                        // what the follow bar says it is doing
+        fed: 0.5,                           // smoothed "the sediment here is worth working"
+        sifting: false,                     // a claw-load is in progress
+        pellet: 0, pellets: 0,              // ring-buffer write slot, and how many are out
+        washed: true                        // pellet field already cleared for this flood
       };
       crabs.push(c);
 
@@ -458,8 +539,19 @@
         var flooding = world.tideDir > 0 && world.tide > b.y - 0.08;
         var wantsOut = !wet && !flooding && !world.isNight;
 
+        /* The flood takes the pellet field back (§28). Keyed off water
+           actually reaching the hole, not off the crab going down — a
+           crab that dives because night fell keeps its litter until the
+           tide comes for it. */
+        if (wet) {
+          if (!c.washed) { washPellets(c, ci); c.washed = true; }
+        } else if (c.washed && c.pellets === 0) {
+          c.washed = false;
+        }
+
         switch (c.state) {
           case 'down':
+            c.act = 'down';
             if (wantsOut) {
               c.wait -= dt;
               if (c.wait <= 0) { c.state = 'rising'; c.sink = 1; }
@@ -469,6 +561,7 @@
             break;
 
           case 'rising':
+            c.act = 'rising';
             c.sink -= dt / 0.42;
             if (c.sink <= 0) {
               c.sink = 0; c.state = 'out'; c.fleeing = false;
@@ -479,10 +572,11 @@
 
           case 'out':
             if (!wantsOut && !c.fleeing) { c.fleeing = true; c.tgtX = b.x; c.tgtZ = b.z; }
-            surface(c, dt, wantsOut);
+            surface(c, ci, dt);
             break;
 
           case 'diving':
+            c.act = 'diving';
             c.sink += dt / 0.34;
             if (c.sink >= 1) { c.sink = 1; c.state = 'down'; c.wait = range(0.4, 6); }
             break;
@@ -501,19 +595,22 @@
       }
 
       if (anyDrawn) for (var k2 in R) R[k2].mesh.instanceMatrix.needsUpdate = true;
+      if (pelletDirty) { mPellet.instanceMatrix.needsUpdate = true; pelletDirty = false; }
     }
 
     /* What a crab does while it is standing on the flat. */
-    function surface(c, dt, wantsOut) {
+    function surface(c, ci, dt) {
       var b = c.b;
       var dx = c.tgtX - c.x, dz = c.tgtZ - c.z;
       var dist = Math.sqrt(dx * dx + dz * dz);
 
       if (c.fleeing) {
+        c.act = 'flee';
         if (dist < 0.10) { c.state = 'diving'; return; }
         step(c, dx / dist, dz / dist, FLEE * c.speed, dt);
         c.wave = Math.max(0, c.wave - dt * 4);
         c.scoop = 0;
+        c.sifting = false;
         return;
       }
 
@@ -524,6 +621,7 @@
       var atHole = Math.abs(c.x - b.x) < 0.45 && Math.abs(c.z - b.z) < 0.45;
 
       if (c.waveLeft > 0) {
+        c.act = 'wave';
         c.waveT += dt;
         var T = 1.0;
         var p = (c.waveT % T) / T;
@@ -543,27 +641,82 @@
         }
       }
 
-      /* Feeding. Stand still, dip the small claw to the sand and sift,
-         then move a little and do it again — a deposit feeder works its
-         way outward from the hole and back. */
+      /* ---- feeding, wired to the biofilm (§7, §28) ----
+         Stand still, dip the small claw to the sand and sift, then move
+         a little and do it again — a deposit feeder works its way
+         outward from the hole and back. The animation was always this;
+         what is new is that the sift now takes something off the film
+         grid and gives a pellet back, so the sediment the crab is
+         standing on is a finite thing it can use up.
+
+         Grazing happens ONLY in here, inside the pause. A walking crab
+         eats nothing, which is what keeps 84 of them from flattening a
+         band that regrows at its slowest while they are out. */
       if (c.pause > 0) {
+        c.act = 'sift';
         c.pause -= dt;
         c.scoopT += dt;
         c.scoop = 0.5 - 0.5 * Math.cos(c.scoopT * 6.5);
+
+        var here = world.filmAt(c.x, c.z);
+        if (here > BARE) world.grazeFilm(c.x, c.z, GRAZE_RATE * dt);
+        // GOOD, not BARE: "worth staying for", not "not yet empty"
+        c.fed += ((here > GOOD ? 1 : 0) - c.fed) * Math.min(1, 0.9 * dt);
+
+        if (c.pause <= 0 && c.sifting) { dropPellet(c, ci); c.sifting = false; }
         return;
       }
+      c.act = 'forage';
       c.scoop = Math.max(0, c.scoop - dt * 3);
 
       if (dist < 0.09) {
-        c.pause = range(0.7, 2.1);
-        // sometimes drift back toward the hole rather than further out
-        var ang = rand() * Math.PI * 2;
-        var rad = TERRITORY * (rand() < 0.35 ? range(0, 0.3) : range(0.3, 1));
-        c.tgtX = b.x + Math.cos(ang) * rad;
-        c.tgtZ = b.z + Math.sin(ang) * rad;
+        /* Rich sediment is worth working over; grit is not. Both ends
+           of this feed back on the film: a crab that finds food stays
+           and takes more of it, a crab that does not moves sooner and
+           spreads its pressure. */
+        c.pause = range(0.7, 2.1) * (0.62 + 0.76 * c.fed);
+        c.sifting = true;
+        pickPatch(c);
         return;
       }
       step(c, dx / dist, dz / dist, WALK * c.speed, dt);
+    }
+
+    /* ------------------------------------------------------------
+       where to sift next (§28)
+
+       Area-restricted search on a very short leash. Candidates are
+       sampled inside the territory and the richest wins — but the
+       territory is barely wider than one terrain node, so this is not
+       really the animal choosing a patch. It is the animal choosing
+       how far from its hole to risk being, and that is the term that
+       matters: a crab whose ring is worked out pushes out to
+       HUNGRY_REACH, further from the door than it would otherwise go.
+
+       Which is the trade a real fiddler makes and the reason the
+       burrow-fidelity story is worth telling: the crabs you see furthest
+       out on the mud are the hungry ones, and they are the ones a rising
+       tide or a mudskipper catches short.
+       ------------------------------------------------------------ */
+    function pickPatch(c) {
+      var b = c.b;
+      var reach = TERRITORY * (1 + (1 - c.fed) * (HUNGRY_REACH - 1));
+      var bestX = b.x, bestZ = b.z, best = -1;
+      /* A well-fed crab pots about near the door; a hungry one goes
+         straight to the rim. Stretching `reach` alone was not enough to
+         see — averaged over a circle it moved the animals 17 cm. The
+         bias has to move with the hunger too. */
+      var nearOdds = 0.10 + 0.30 * c.fed;
+      for (var t = 0; t < TRIES; t++) {
+        var ang = rand() * Math.PI * 2;
+        var rad = reach * (rand() < nearOdds ? range(0, 0.35) : range(0.45, 1));
+        var nx = b.x + Math.cos(ang) * rad;
+        var nz = b.z + Math.sin(ang) * rad;
+        if (world.waterAt(nx, nz) !== null) continue;      // never wade to feed
+        var score = world.filmAt(nx, nz) - rad * 0.035;    // distance from the hole has a price
+        if (score > best) { best = score; bestX = nx; bestZ = nz; }
+      }
+      c.tgtX = bestX; c.tgtZ = bestZ;
     }
 
     /* Move, and turn so the crab is walking SIDEWAYS along the travel
@@ -602,6 +755,27 @@
         var n = 0;
         for (var i = 0; i < N; i++) if (crabs[i].state !== 'down') n++;
         return n;
+      },
+      /* Tuning readout (§28). Band means hide local grazing, so this
+         reports the film UNDER the animals and how many of them are
+         finding anything — the two numbers the biofilm balance is
+         actually judged on. */
+      feeding: function () {
+        var out = 0, sift = 0, fed = 0, film = 0, pel = 0;
+        for (var i = 0; i < N; i++) {
+          var c = crabs[i];
+          pel += c.pellets;
+          if (c.state === 'down') continue;
+          out++;
+          fed += c.fed;
+          film += world.filmAt(c.x, c.z);
+          if (c.act === 'sift') sift++;
+        }
+        return {
+          out: out, sifting: sift, pellets: pel,
+          fed: out ? fed / out : 0,
+          filmUnder: out ? film / out : 0
+        };
       }
     };
   }

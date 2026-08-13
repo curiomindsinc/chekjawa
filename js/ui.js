@@ -46,11 +46,18 @@
     fiddler: {
       dist: 7,
       lift: 0.35,                              // metres above the stored point, for picking
+      /* Keyed off `act`, not `state` — a fiddler is 'out' for most of a
+         low tide and that says nothing. What it is DOING out there is
+         the interesting part (§28). */
       states: {
-        down:   'down the burrow',
-        rising: 'coming up',
-        out:    'out on the mud',
-        diving: 'running for the burrow'
+        down:    'down the burrow',
+        rising:  'coming up',
+        out:     'out on the mud',
+        forage:  'working out from the hole',
+        sift:    'sifting mud for film',
+        wave:    'waving the big claw',
+        flee:    'running for the burrow',
+        diving:  'running for the burrow'
       }
     },
     barnacle: {
@@ -238,7 +245,11 @@
     var pop = popOf(followedKey) || [];
     var meta = metaOf(followedKey);
     var n = pop.indexOf(followed) + 1;
-    var st = (meta.states && meta.states[followed.state]) || followed.state || '';
+    /* `act` is the finer-grained label where a species publishes one
+       (the fiddler crab does, §28); everything else falls back to the
+       state machine's own name. */
+    var key = followed.act || followed.state;
+    var st = (meta.states && meta.states[key]) || key || '';
     $('follow-label').textContent = spec.name + ' #' + n;
     $('follow-state').textContent = st;
   }

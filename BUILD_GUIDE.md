@@ -1420,3 +1420,111 @@ Five instanced meshes for the body (body, parapodia ×2, rhinophores ×2, oral t
   now the last v1 species not wired to a resource).
 - **Spoon seagrass**, the lagoon's other plant (§26).
 - The sea hare is the first v2-roster animal to land; the rest of §1's v2 list is untouched.
+
+---
+
+## 28. The fiddler crab reads the biofilm — `js/crabs.js`, `js/crabbody.js` (2026-08-13)
+
+Fourth time of asking, and the last v1 species that was still grazing a resource which did not
+exist. §25 built the film, §26 the meadow, §27 the animal that eats the meadow — and the 84
+animals with the biggest grazing pressure on the shore went on miming it.
+
+### It is a deposit feeder, so the seam is not the nerite's
+
+Nerites and conches scrape continuously while they are on the ground, so their hook is one line in
+the movement loop. A fiddler works in **discrete claw-loads**: stand still, dip the small claw,
+sift, spit out the cleaned grit, move a little, do it again. The animation was already exactly
+that. So the grazing goes **inside the pause**, not in the walk:
+
+```js
+if (c.pause > 0) {                       // a sift is in progress
+  var here = world.filmAt(c.x, c.z);
+  if (here > BARE) world.grazeFilm(c.x, c.z, GRAZE_RATE * dt);
+  c.fed += ((here > GOOD ? 1 : 0) - c.fed) * Math.min(1, 0.9 * dt);
+  if (c.pause <= 0 && c.sifting) { dropPellet(c, ci); c.sifting = false; }
+  return;
+}
+```
+
+A walking crab eats nothing. That duty cycle — roughly a fifth of the population is mid-sift at
+any moment — is most of what keeps 84 confined animals from flattening their band.
+
+### The confinement problem, worse than the nerite's
+
+[[chekjawa-biofilm-tuning]]'s rule is that a grazer which cannot leave its patch must be tuned
+**under** regrowth. Two things make it bite harder here than it did on the snail:
+
+- a 1.30 m territory is about **one terrain node** (3.0 × 1.5 m), and burrows are only 1.5 m
+  apart — so roughly **three crabs share the ground one of them is standing on**;
+- the crab feeds **only while the flat is dry and lit**, which is exactly when the film up in the
+  fiddler band regrows slowest (`DRY_RATE` 0.12 in biofilm.js).
+
+`GRAZE_RATE` 0.055 film/s *while sifting* is the setting that survives that. Twelve tide cycles
+with nerites and conches also running:
+
+| | after 1 cycle | cycles 8–12 |
+|---|---|---|
+| film under the animals | 0.58 | 0.35 – 0.43 |
+| `fed` (found good sediment) | 0.92 | 0.54 – 0.62 |
+| out / sifting | 83 / 23 | 83 / 15–27 |
+
+It settles instead of collapsing, which is the whole test. The band mean is useless as usual —
+shore-wide cover never left 96–97% while this was happening.
+
+**The halo is large.** Film on burrow nodes **0.27**, film on same-band nodes with no burrow within
+4 m **0.92** (n = 3 261). More than 3:1, and it is visible on screen: the film sheen is a big part
+of the mud's tone, so a worked cluster reads brown-dark against pale gold ground.
+
+### Hunger buys range, and one threshold was again not enough
+
+`BARE` = is there anything left, `GOOD` = is this worth staying for — the sea hare's lesson (§27)
+applied before it could bite. `fed` then does two jobs: a crab that is finding food sifts longer
+(`pause` scales 0.62–1.38×), and a crab that is not pushes its foraging circle out to
+`HUNGRY_REACH` × 1.30 m.
+
+Stretching `reach` alone moved the animals **17 cm** and did not read. The radial bias had to move
+with the hunger too — a fed crab potters by the door, a hungry one goes straight to the rim. After
+that, mean **target** radius against `fed`:
+
+| `fed` | 0–0.2 | 0.2–0.4 | 0.4–0.6 | 0.6–0.8 | 0.8–1.0 |
+|---|---|---|---|---|---|
+| target radius (m) | **1.09** | 0.78 | 0.55 | 0.29 | **0.12** |
+
+Nine to one, monotonic. Note that **instantaneous position is the wrong thing to measure** — it
+showed 0.86 m vs 0.69 m and looked like a failure. A crab reads as `fed` *because* it already
+walked out to good ground, so the position metric measures the outcome and hides the cause.
+The target radius is what hunger actually chose.
+
+This also gives the burrow-fidelity story in species.js a visible edge: the crabs furthest out on
+the mud are the hungry ones, and they are the ones a rising tide catches short.
+
+### The pellets stopped being set dressing
+
+Six crumbs used to be scattered round each hole at build time and never touched again. They are
+now the **receipt**: one pellet dropped wherever a crab finished a sift, ring-buffered eight per
+crab — and **the flood wipes the field**, keyed off water reaching the hole rather than off the
+crab going down, so a crab that dives because night fell keeps its litter until the tide comes for
+it. Nothing else in this sim shows the tide undoing a day's work.
+
+They were also **half the size they should be**: 1:16 against the carapace where a real pellet is
+about 1:8, which read as grit specks even with eight out. `rad` 0.048 → 0.085 in crabbody.js and
+the field reads at the follow-cam's own 7 m.
+
+### Cost
+
+The hook itself is two grid lookups per sifting crab: **0.001 ms/frame**. No new mesh, no new draw
+call — the pellet InstancedMesh already existed and only gained a dirty flag. The whole 83-crab
+population, all surfaced, updates in 0.395 ms, essentially all of it the pre-existing per-part
+matrix work.
+
+### Also
+
+`ui.js` now prefers an organism's `act` over its `state` for the follow bar, because 'out on the
+mud' covers most of a low tide and says nothing. The fiddler publishes `sift` / `forage` / `wave` /
+`flee`; every other species falls through to its state machine's own name unchanged.
+
+### Still owed
+
+- **Spoon seagrass**, the lagoon's other plant (§26) — now the oldest open item.
+- Horn snail, hermit crab (the SCAVENGERS row is still empty), sand dollar, Haddon's carpet anemone.
+- §1's v2 list is otherwise untouched.
