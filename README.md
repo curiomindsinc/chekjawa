@@ -23,9 +23,10 @@ npx http-server -c-1 .
 
 ## Sound
 
-`js/sound.js` plays `sound/intertidal audio.mp3` — a field recording of the shore, ~72 MB. It is
-**not in this repo** (see `sound/README.md`); the simulation runs silently without it and the mute
-button still works.
+Shore ambience starts on the first click or keypress — browsers will not autoplay audio before a
+gesture — and the speaker button top-right mutes it. `sound/intertidal-loop.mp3` is a seamless
+five-minute cut from an hour-long field recording; `sound/README.md` says where the seam is and how
+to re-cut it.
 
 ## Layout
 

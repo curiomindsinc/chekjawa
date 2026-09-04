@@ -57,8 +57,10 @@ tmp/
 # *.blend1
 # *.fbx
 
-# Ambience track (72 MB) — see sound/README.md for how to supply it
+# The hour-long ambience master (72 MB) stays local — the 5-minute loop cut
+# from it ships instead. See sound/README.md.
 sound/*.mp3
+!sound/intertidal-loop.mp3
 
 # Reference material the models were measured against (photos, .obj, capture video).
 # Scaffolding, not product — kept local.

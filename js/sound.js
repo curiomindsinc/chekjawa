@@ -11,7 +11,7 @@
   'use strict';
 
   var STORAGE_KEY = 'chekjawa-sound-muted';
-  var audio = new Audio('sound/intertidal audio.mp3');
+  var audio = new Audio('sound/intertidal-loop.mp3');
   audio.loop = true;
   audio.volume = 0.35;
 
