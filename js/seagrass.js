@@ -256,6 +256,23 @@
 
     ctx.scene.add(mesh);
 
+    /* ---------- click targets ----------
+       9 000 blades is nothing to draw and everything to click: the
+       screen-space picker (ui.js) is a flat scan over every population
+       every hover, and animal populations top out in the hundreds. So
+       this is not "one blade is clickable" — it is a few dozen points
+       strided evenly out of the real, already-placed blade positions,
+       spread across whichever beds the scatter above actually landed
+       in. Clicking anywhere in the meadow lands near one; following it
+       just means the camera holds still over that patch, the same as
+       following a barnacle. */
+    var patches = [];
+    var PATCH_TARGET = 50;
+    var patchStride = Math.max(1, Math.floor(COUNT_REAL / PATCH_TARGET));
+    for (var pI = 0; pI < COUNT_REAL; pI += patchStride) {
+      patches.push({ x: bX[pI], y: bY[pI], z: bZ[pI] });
+    }
+
     /* ---------- stand / collapse ----------
        One blade's matrix, pivoted at the RHIZOME. The blade's own +Y is
        tilted away from vertical toward its fall heading; the box is
@@ -374,7 +391,8 @@
       graze: graze,
       cover: cover,
       // fraction of the meadow still standing in water — 0 at a spring low
-      standing: function () { return limp; }
+      standing: function () { return limp; },
+      patches: patches               // [{x,y,z}] — click targets, see above
     };
   }
 

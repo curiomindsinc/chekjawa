@@ -289,6 +289,18 @@
 
     ctx.scene.add(mesh);
 
+    /* ---------- click targets ----------
+       Same reasoning as seagrass.js: 20 000 leaves is nothing to draw
+       and everything to click, so a few dozen points strided out of the
+       real placed leaf positions stand in for the mat — spread across
+       whichever patches the scatter above actually landed in. */
+    var patches = [];
+    var PATCH_TARGET = 50;
+    var patchStride = Math.max(1, Math.floor(COUNT_REAL / PATCH_TARGET));
+    for (var pI = 0; pI < COUNT_REAL; pI += patchStride) {
+      patches.push({ x: lX[pI], y: lY[pI], z: lZ[pI] });
+    }
+
     /* ---------- lift / wilt ----------
        Cheaper than seagrass.js's stand/collapse and deliberately so.
        The leaf's base is already at the geometry origin, so there is no
@@ -400,7 +412,8 @@
       cover: cover,
       // fraction of the mat still lifted in water — 0 on a drained flat
       beds: beds,
-      lifted: function () { return limp; }
+      lifted: function () { return limp; },
+      patches: patches               // [{x,y,z}] — click targets, see above
     };
   }
 

@@ -166,11 +166,10 @@ html, body {
 
 /* ------------------------ species panel ------------------------ */
 
-/* Sits to the LEFT of the tide gauge (190px + its 16px gutter), not under
-   it — the gauge is live instrumentation and must stay readable while the
-   panel is open. */
+/* Flush to the right edge — the tide gauge now lives top-left, so the
+   panel no longer needs to dodge it. */
 #species-panel {
-  position: absolute; top: 72px; right: 222px;
+  position: absolute; top: 72px; right: 16px;
   width: 258px;
   max-height: calc(100% - 170px);
   display: flex; flex-direction: column;
@@ -441,7 +440,7 @@ html, body {
   position: absolute; left: 16px; transform: translateY(-50%);
   font-size: 10.5px; letter-spacing: 1.5px; font-weight: bold;
 }
-.fw-row-label.lv-apex { color: #e8663f; }
+.fw-row-label.lv-apex { color: #f2a03c; }
 .fw-row-label.lv-pred { color: #e8663f; }
 .fw-row-label.lv-filt { color: #6fa8ff; }   /* filter feeders — plankton out of the water column */
 .fw-row-label.lv-depo { color: #c98a5a; }   /* deposit feeders — detritus off the mud surface */
@@ -593,7 +592,7 @@ body.hunt-active #species-panel, body.hunt-active #inspect-card, body.hunt-activ
 body.cine-active #topbar, body.cine-active #topright, body.cine-active #controls,
 body.cine-active #organisms-badge, body.cine-active #credit,
 body.cine-active #species-panel, body.cine-active #inspect-card, body.cine-active #toast,
-body.cine-active #weather-panel {
+body.cine-active #tide-panel {
   display: none !important;
 }
 /* the camera is script-driven for the duration, so swallow stray drags */
@@ -661,11 +660,13 @@ body.cine-active #scene-holder { cursor: default; }
 
 /* --------------------------- intro overlay --------------------------- */
 
+/* No backdrop-filter here, unlike the other overlays — the intro rings
+   a real button/panel behind it (#controls, #tide-panel, #btn-species…)
+   step by step, so that element has to stay crisp, not blurred. */
 #intro-overlay {
   position: absolute; inset: 0;
   display: flex; align-items: center; justify-content: center;
   background: rgba(12, 7, 2, 0.55);
-  backdrop-filter: blur(2px);
   z-index: 100;
 }
 
@@ -861,7 +862,7 @@ body.cine-active #scene-holder { cursor: default; }
    "what's exposed right now" — no legend lookup needed. */
 
 #tide-panel {
-  position: absolute; top: 70px; right: 16px;
+  position: absolute; top: 70px; left: 16px;
   width: 190px;
   padding: 12px 14px 14px;
   z-index: 12;

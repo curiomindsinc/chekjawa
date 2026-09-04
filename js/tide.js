@@ -85,6 +85,27 @@
     return { height: best, inSecs: LEAD };
   }
 
+  /* HOW LONG UNTIL THE WATER IS BELOW `h`, in seconds, capped at
+     `maxS` (returned as-is if it never gets there inside the cap).
+
+     Added in §42 for the otter, which has to decide whether a swim to
+     a haul-out is worth starting — a question it cannot answer from
+     the CURRENT height, only from how much water is left.
+
+     Deliberately does NOT go through `tideAt`, which records `lastT`
+     as a side effect for `setPhase` and `jumpToSpringLow`. Sampling
+     the future through it would leave the clock believing "now" is
+     half a minute from now, and the tide UI's spring-low jump would
+     land in the wrong place. A predictor must not move the thing it
+     is predicting. */
+  function secsUntilBelow(t, h, maxS) {
+    if (heightAt(t + offset) < h) return 0;
+    for (var s = 1; s <= maxS; s++) {
+      if (heightAt(t + s + offset) < h) return s;
+    }
+    return maxS;
+  }
+
   window.Tide = {
     TIDE_CYCLE_SECS: TIDE_CYCLE_SECS,
     SPRING_CYCLE_SECS: SPRING_CYCLE_SECS,
@@ -93,6 +114,7 @@
     MAX: MEAN + AMP,          // 3.10
     at: tideAt,
     dir: dirAt,
+    secsUntilBelow: secsUntilBelow,
     phase: phaseAt,
     envelope: envOf,
     springness: springnessAt,

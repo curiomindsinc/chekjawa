@@ -16,6 +16,17 @@
 
   <!-- top-right round buttons -->
   <div id="topright">
+    <button id="btn-sound" class="round-btn" title="Mute sound">
+      <svg id="sound-icon-on" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 10v4h4l5 4V6L8 10H4z"/>
+        <path d="M16.5 8.5a5 5 0 0 1 0 7"/>
+        <path d="M19 6a8.5 8.5 0 0 1 0 12"/>
+      </svg>
+      <svg id="sound-icon-off" class="hidden" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 10v4h4l5 4V6L8 10H4z"/>
+        <path d="M17 9l5 6M22 9l-5 6"/>
+      </svg>
+    </button>
     <button id="btn-foodweb" class="round-btn" title="Food web">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8">
         <circle cx="12" cy="5" r="2.4"/><circle cx="5" cy="18" r="2.4"/><circle cx="19" cy="18" r="2.4"/>
@@ -25,6 +36,12 @@
     <button id="btn-species" class="round-btn" title="Species list">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
         <path d="M4 6 20 6 M4 12 20 12 M4 18 20 18"/>
+      </svg>
+    </button>
+    <button id="btn-cinematic" class="round-btn" title="Watch the film — a hands-off tour of the shore">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
+        <rect x="2.5" y="6" width="13" height="12" rx="1.6"/>
+        <path d="M15.5 10.5 21.5 7.2v9.6l-6-3.3z"/>
       </svg>
     </button>
   </div>
@@ -54,6 +71,8 @@
     <div class="tide-row"><span class="tide-key">Biofilm</span><span id="film-cover">—</span></div>
     <div class="tide-row"><span class="tide-key">Seagrass</span><span id="grass-state">—</span></div>
     <div class="tide-row"><span class="tide-key">Spoon grass</span><span id="spoon-state">—</span></div>
+    <div class="tide-row"><span class="tide-key">Sea lettuce</span><span id="ulva-state">—</span></div>
+    <div class="tide-row"><span class="tide-key">Sargassum</span><span id="sarg-state">—</span></div>
 
     <div class="tide-btns">
       <button id="btn-springlow" title="Jump ahead so the next low is a spring low — the lagoon surfaces">⏭ Spring low</button>
@@ -149,6 +168,19 @@
   <!-- toast -->
   <div id="toast" class="hidden"></div>
 
+  <!-- cinematic letterbox + lower third. Bars only: the sim keeps running
+       underneath, this is an overlay on the live canvas and not a cutscene. -->
+  <div id="cine-overlay" class="hidden">
+    <div class="cine-bar top"></div>
+    <div class="cine-bar bottom"></div>
+    <div id="cine-time"><i class="cine-dot"></i><span>0:00 / 2:44</span></div>
+    <div id="cine-caption">
+      <div id="cine-cap"></div>
+      <div id="cine-sub"></div>
+    </div>
+    <button id="cine-skip">ESC · SKIP</button>
+  </div>
+
   <!-- classic scripts, no modules, no build step — double-click to run -->
   <script src="vendor/three.min.js"></script>
   <script src="js/tide.js"></script>
@@ -161,6 +193,8 @@
   <script src="js/biofilm.js"></script>
   <script src="js/seagrass.js"></script>
   <script src="js/spoongrass.js"></script>
+  <script src="js/ulva.js"></script>
+  <script src="js/sargassum.js"></script>
   <script src="js/egretbody.js"></script>
   <script src="js/egrets.js"></script>
   <script src="js/crabbody.js"></script>
@@ -170,6 +204,24 @@
   <script src="js/seastarbody.js"></script>
   <script src="js/seaharebody.js"></script>
   <script src="js/mudskipperbody.js"></script>
+  <script src="js/hermitbody.js"></script>
+  <script src="js/hornsnailbody.js"></script>
+  <script src="js/sanddollarbody.js"></script>
+  <script src="js/seacucumberbody.js"></script>
+  <script src="js/sandstarbody.js"></script>
+  <script src="js/penshellbody.js"></script>
+  <script src="js/moonsnailbody.js"></script>
+  <script src="js/oysterbody.js"></script>
+  <script src="js/musselbody.js"></script>
+  <script src="js/spongebody.js"></script>
+  <script src="js/swimmingcrabbody.js"></script>
+  <script src="js/horseshoebody.js"></script>
+  <script src="js/anemonebody.js"></script>
+  <script src="js/anemonefishbody.js"></script>
+  <script src="js/gobybody.js"></script>
+  <script src="js/octopusbody.js"></script>
+  <script src="js/ottermesh.js"></script>
+  <script src="js/otterbody.js"></script>
   <script src="js/world.js"></script>
   <script src="js/crabs.js"></script>
   <script src="js/mudskippers.js"></script>
@@ -178,10 +230,30 @@
   <script src="js/conchs.js"></script>
   <script src="js/seastars.js"></script>
   <script src="js/seahares.js"></script>
+  <script src="js/hermitcrabs.js"></script>
+  <script src="js/hornsnails.js"></script>
+  <script src="js/sanddollars.js"></script>
+  <script src="js/seacucumbers.js"></script>
+  <script src="js/sandstars.js"></script>
+  <script src="js/penshells.js"></script>
+  <script src="js/moonsnails.js"></script>
+  <script src="js/oysters.js"></script>
+  <script src="js/mussels.js"></script>
+  <script src="js/sponges.js"></script>
+  <script src="js/swimmingcrabs.js"></script>
+  <script src="js/horseshoecrabs.js"></script>
+  <script src="js/anemones.js"></script>
+  <script src="js/anemonefish.js"></script>
+  <script src="js/gobies.js"></script>
+  <script src="js/otters.js"></script>
+  <script src="js/octopuses.js"></script>
   <script src="js/camera.js"></script>
   <script src="js/tideui.js"></script>
   <script src="js/ui.js"></script>
+  <script src="js/sound.js"></script>
   <script src="js/foodweb.js"></script>
+  <script src="js/cinematic.js"></script>
   <script src="js/main.js"></script>
+  <script src="js/intro.js"></script>
 </body>
 </html>

@@ -52,10 +52,20 @@ tmp/
 *.orig
 *.rej
 
-# Large source assets kept outside the repo (uncomment if they get added)
+# Large source assets kept outside the repo
 # *.blend
 # *.blend1
 # *.fbx
+
+# Ambience track (72 MB) — see sound/README.md for how to supply it
+sound/*.mp3
+
+# Reference material the models were measured against (photos, .obj, capture video).
+# Scaffolding, not product — kept local.
+reference/
+
+# Screen captures
+Recording*.mp4
 
 # Playwright MCP capture output
 .playwright-mcp/

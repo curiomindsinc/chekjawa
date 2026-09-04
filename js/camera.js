@@ -22,6 +22,28 @@
     this.boundX = 0;          // look-at clamp, set from world.simArea by main.js
     this.boundZ = 0;
 
+    /* Terrain height lookup, set from world.heightAt by main.js.
+
+       THE CAMERA MAY NEVER BE INSIDE THE SHORE. The floors below used
+       to be flat numbers — 1.5 m free, 0.8 m locked — and a flat number
+       cannot express this, because the ground here runs from -0.55 m in
+       the channel to 3.05 m at the mangrove fringe. Anything at 0.8 m
+       over the fiddler mudflat (2.02 m CD) is a metre and a quarter
+       UNDER it, and what you see is the underside of the beach.
+
+       Left optional so the rig still runs standalone; without it the
+       old flat floors apply. */
+    this.groundAt = null;
+
+    this.locked = false;      // the cinematic owns the camera while this is set
+    /* How low the camera may go while LOCKED. null = the 0.8 m default, which
+       is about the waterline on a middling tide and keeps a hands-off shot out
+       of the mud. cinematic.js drops it for the shots that follow a diving
+       otter — those have to get under the surface and down near the bed, and
+       0.8 m is above the goby the otter is chasing on half the tides here.
+       The free camera's own 1.5 m floor is separate and unchanged. */
+    this.minY = null;
+
     this.keys = {};
     this.onClick = null;      // set by ui.js — receives (clientX, clientY)
 
@@ -127,7 +149,14 @@
         this.target.y + this.dist * lsp,
         this.target.z + this.dist * lcp * Math.cos(this.yaw)
       );
-      if (this.camera.position.y < 0.8) this.camera.position.y = 0.8;
+      var lockFloor = this.minY === null ? 0.8 : this.minY;
+      if (this.groundAt) {
+        // Whichever is higher: the shot's own floor, or half a metre of
+        // clearance over whatever the camera is standing on.
+        var lg = this.groundAt(this.camera.position.x, this.camera.position.z) + 0.5;
+        if (lg > lockFloor) lockFloor = lg;
+      }
+      if (this.camera.position.y < lockFloor) this.camera.position.y = lockFloor;
       this.camera.lookAt(this.target);
       return;
     }
@@ -171,6 +200,13 @@
        followed animal IS on the mud, so while following, the floor drops to
        just above whatever it is standing on. */
     var floorY = this.followed ? this.followPoint().y + 0.6 : 1.5;
+    // Same terrain clamp as the locked branch. The free camera could walk
+    // up to the mangrove fringe (3.05 m CD) and end up inside the mud too;
+    // 1.5 m was only ever right for the middle of the flat.
+    if (this.groundAt) {
+      var fg = this.groundAt(this.camera.position.x, this.camera.position.z) + 0.5;
+      if (fg > floorY) floorY = fg;
+    }
     if (this.camera.position.y < floorY) this.camera.position.y = floorY;
     this.camera.lookAt(this.target);
   };

@@ -86,13 +86,27 @@
      normalise-then-squash step would rescale that hook by the part's
      THICKNESS instead and flatten it to nothing.
      ------------------------------------------------------------ */
+  /* aspectY/aspectZ take a number or a function of t — see sweep. */
+  function squash(v) {
+    if (v === undefined) return function () { return 1; };
+    if (typeof v === "function") return v;
+    return function () { return v; };
+  }
+
   function sweep(o) {
     var seg = o.seg || 8, rings = o.rings || 6;
     var len = o.len, rad = o.rad;
     var profile = o.profile || function () { return 1; };
     var round = o.round || 2;
-    var ay = o.aspectY === undefined ? 1 : o.aspectY;
-    var az = o.aspectZ === undefined ? 1 : o.aspectZ;
+    /* Squash factors. A NUMBER squashes the whole part evenly, which
+       is what every species built before the otter passes. A FUNCTION
+       of t lets the squash vary ALONG the sweep, which matters only
+       when a body is cut into links that have to meet: a per-link
+       constant makes each link pick its own height, and the join is a
+       step in Y even when the profile — which both links read at the
+       same station — has already made the width continuous. See
+       otterbody.js. */
+    var ay = squash(o.aspectY), az = squash(o.aspectZ);
     var cY = o.curveY || flat, cZ = o.curveZ || flat;
     var jitter = o.jitter || 0, seed = o.seed || 0;
     var centred = !!o.centred;
@@ -104,6 +118,7 @@
       var pr = profile(t) * rad;
       var oy = cY(t), oz = cZ(t);
       /* Ends stay put; interior rings shuffle along the sweep a little. */
+      var ayt = ay(t), azt = az(t);
       var edge = (r === 0 || r === rings);
       var x = t * len + (edge ? 0 : (hash(r, 91, seed) - 0.5) * jitter * len * 0.4);
       if (centred) x -= len * 0.5;
@@ -114,8 +129,8 @@
         var j = 1 + (hash(r, c, seed) - 0.5) * jitter;
         row.push([
           x,
-          sgn(cs) * Math.pow(Math.abs(cs), p) * pr * j * ay + oy,
-          sgn(sn) * Math.pow(Math.abs(sn), p) * pr * j * az + oz
+          sgn(cs) * Math.pow(Math.abs(cs), p) * pr * j * ayt + oy,
+          sgn(sn) * Math.pow(Math.abs(sn), p) * pr * j * azt + oz
         ]);
       }
       grid.push(row);

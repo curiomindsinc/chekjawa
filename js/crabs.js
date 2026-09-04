@@ -50,11 +50,13 @@
   /* ---------- the knobs ----------
      S is the only one that changes how big the crab looks. A real
      fiddler is 2–3 cm across; drawn true to scale on a 300 m transect
-     it is a single pixel next to 3 m boulders, so this is deliberately
-     ~15x life size — the same exaggeration the boulders and mangroves
-     already carry. Turn it down for realism, up for a diorama. */
-  var S = 0.48;                 // metres per body unit
-  var COUNT = 84;
+     it is a single pixel next to 3 m boulders, so this is still
+     exaggerated. Brought down from an earlier 0.48 (~15x) to ~10x,
+     matching the hermit crab and nerite — animals of the same real-world
+     size a few metres away on the same shore. Turn it down for realism,
+     up for a diorama. */
+  var S = 0.30;                 // metres per body unit
+  var COUNT = 140;
   var ZONE = [1.78, 2.24];      // metres CD — guide §1, the fiddler band
   var Z_RANGE = [-36, -6];      // the mudflat, guide §4 profile
   var SPACING = 1.5;            // metres between burrows — they are territorial
@@ -113,8 +115,9 @@
   var L_FEMUR = 0.34, L_TIBIA = 0.34, L_TIP = 0.20;
   var SHOULDER = { x: 0.38, y: 0.34, z: 0.30 };
   var STALK = { x: 0.11, y: 0.46, z: 0.29, len: 0.26 };
-  var MAJOR = { merus: 0.30, carpus: 0.26, palm: 0.82, finger: 0.52 };
+  var MAJOR = { merus: 0.30, carpus: 0.26, palm: 0.82, finger: 0.40 };
   var MINOR_SCALE = 0.34;
+  var CLAW = CrabBody.CLAW;     // how the fingers hang and swing — see crabbody.js
 
   /* Claw poses as raw directions; `h` is +1 for a right-handed crab and
      -1 for a left-handed one, which is the only difference between
@@ -284,8 +287,8 @@
       eye:      slots(P.eye, 2),
       arm:      slots(P.armSeg, 4),
       palm:     slots(P.clawPalm, 2, true),
-      upper:    slots(P.clawUpper, 2),
-      lower:    slots(P.clawLower, 2),
+      pollex:   slots(P.pollex, 2),
+      dactyl:   slots(P.dactyl, 2),
       leg:      slots(P.legSeg, 16),
       tip:      slots(P.legTip, 8)
     };
@@ -394,6 +397,7 @@
        Returns nothing; walks the chain writing each segment as it goes. */
     var pose = { merus: new THREE.Vector3(), carpus: new THREE.Vector3(), palm: new THREE.Vector3() };
     var jp = new THREE.Vector3(), hinge = new THREE.Vector3(), fdir = new THREE.Vector3();
+    var fup = new THREE.Vector3();
     function cheliped(ci, side, big, w, f, gape) {
       var sc = big ? 1 : MINOR_SCALE;
       var armSlot = ci * 4 + (big ? 0 : 2);
@@ -418,17 +422,44 @@
       jp.addScaledVector(dir, lp * 0.94);
 
       /* The fingers carry on from the palm tip, opening away from each
-         other by `gape`. A claw that never opens looks welded shut. */
-      root.copy(jp);
+         other by `gape`. A claw that never opens looks welded shut.
+
+         THE TWO FINGERS DO NOT SHARE A ROOT, and only one of them
+         moves. They used to do both, which is why the claw read as a
+         pair of tongs: two identical rods pivoting about the same
+         point. A real cheliped is not symmetrical at all —
+
+           the POLLEX is not a jointed finger. It is the far end of the
+             palm itself, drawn out into a point. It hangs LOW on the
+             palm's distal face and it NEVER moves.
+           the DACTYL is the only moving part of the whole claw. It is
+             hinged HIGH on the palm and swings down onto the pollex.
+
+         So `gape` reaches exactly one of them. Shut is the dactyl held
+         down at CLAW.SHUT; opening lifts it off, and the pollex below
+         it does not so much as twitch.
+
+         `fup` is the palm's own up — world UP with the palm's
+         component taken out — so the two roots separate square to the
+         palm however it happens to be posed. `hinge` is perpendicular
+         to both and is what the dactyl turns about. */
       dir.copy(pose.palm).normalize();
-      /* Its own axis vector: put() runs basis(), which reuses the shared
-         scratch vectors, so anything still needed after a put() call has
-         to live somewhere basis() will not touch. */
+      /* Their own axis vectors: put() runs basis(), which reuses the
+         shared scratch vectors, so anything still needed after a put()
+         call has to live somewhere basis() will not touch. */
       hinge.crossVectors(dir, UP).normalize();
-      fdir.copy(dir).applyAxisAngle(hinge, gape * 0.45);
-      put(R.upper, clawSlot, root, fdir, lf, sc, true);
-      fdir.copy(dir).applyAxisAngle(hinge, -gape * 0.30);
-      put(R.lower, clawSlot, root, fdir, lf * 0.92, sc * 0.95, true);
+      fup.copy(UP).addScaledVector(dir, -UP.dot(dir));
+      if (fup.lengthSq() < 1e-6) fup.copy(FWD).addScaledVector(dir, -FWD.dot(dir));
+      fup.normalize();
+
+      var rootOff = CLAW.ROOT * lf;
+      // pollex: low on the palm, straight out along it, fixed
+      root.copy(jp).addScaledVector(fup, -rootOff);
+      put(R.pollex, clawSlot, root, dir, lf * CLAW.POLLEX, sc * 0.95, true);
+      // dactyl: high on the palm, and the only thing `gape` touches
+      root.copy(jp).addScaledVector(fup, rootOff);
+      fdir.copy(dir).applyAxisAngle(hinge, -CLAW.SHUT + gape * CLAW.OPEN);
+      put(R.dactyl, clawSlot, root, fdir, lf, sc, true);
     }
 
     /* One leg. Two-link IK from hip to ankle so the foot stays planted
@@ -514,7 +545,7 @@
       var s;
       for (s = 0; s < 2; s++) { hide(R.stalk, ci * 2 + s); hide(R.eye, ci * 2 + s); }
       for (s = 0; s < 4; s++) hide(R.arm, ci * 4 + s);
-      for (s = 0; s < 2; s++) { hide(R.palm, ci * 2 + s); hide(R.upper, ci * 2 + s); hide(R.lower, ci * 2 + s); }
+      for (s = 0; s < 2; s++) { hide(R.palm, ci * 2 + s); hide(R.pollex, ci * 2 + s); hide(R.dactyl, ci * 2 + s); }
       for (s = 0; s < 16; s++) hide(R.leg, ci * 16 + s);
       for (s = 0; s < 8; s++) hide(R.tip, ci * 8 + s);
     }

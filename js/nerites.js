@@ -38,7 +38,7 @@
 
   /* ---------- the knobs ---------- */
   var S = 0.20;                 // metres per body unit — a ~2 cm snail, exaggerated like the rest
-  var COUNT = 90;
+  var COUNT = 150;
   var ZONE = [1.9, 2.7];        // metres CD — guide §1, overlapping the barnacle band below it
   var CRAWL = 0.055;            // m/s — a snail's pace, and it should look like one
   var SEEK_CRAWL = 0.078;       // m/s — off the food and travelling, still a snail

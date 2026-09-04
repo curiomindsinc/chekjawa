@@ -1732,3 +1732,1436 @@ the most expensive animal here per individual and the cheapest per population.
 - Hermit crab (SCAVENGERS is still empty), horn snail.
 - *Ulva*, *Sargassum*; the rest of §1's v2 list.
 - The **true goby** §24 still owes §5, and an APEX PREDATORS row when the otter lands.
+
+## 31. Hermit crab, horn snail, sand dollar — the first three off ROSTER.md (2026-08-15)
+
+`js/hermitbody.js` + `js/hermitcrabs.js`, `js/hornsnailbody.js` + `js/hornsnails.js`,
+`js/sanddollarbody.js` + `js/sanddollars.js`.
+
+ROSTER.md's queue, in its own order. Three species chosen to be three *different kinds of problem*
+rather than three more animals: one fills the empty food-web row, one had to justify being a third
+grazer, and one is barely visible.
+
+The wiring was exactly what §11 promised — a species file, one `sim` key in species.js, one `pops`
+entry and one `update` call in main.js, a follow distance and state labels in ui.js. No UI work,
+no food-web work. **The catalog is now 16 species, 11 of them with bodies.**
+
+---
+
+### Hermit crab — the empty row, and a market
+
+`SCAVENGERS` has been a labelled band in foodweb.js with nothing standing on it since §22. This is
+what goes there, and it needed almost no new geometry: the body is crabbody.js's limb kit
+wholesale — legSeg, legTip, armSeg, clawPalm, both fingers, eyestalk, eye — and the fiddler's
+limbs are already the orange a hermit crab wears. **One new part: the shell.**
+
+**The shell is the behaviour.** Everything else on this shore reacts to the tide. This one reacts
+to a market. `shells` is one array built at spawn and never appended to; a shell is either held
+(`holder` = crab index) or lying free on the sand (`holder` = -1), and a swap is two writes to
+that field. A crab can only move up if another crab left something behind, which is the constraint
+real hermit crabs live under, and vacancy chains fall out of it for nothing.
+
+Growth is what keeps it liquid: `need` creeps up, so a shell that fitted last tide is tight this
+one. `discomfort(shellSize, need)` is the whole economics — too small is six times as bad as too
+big, because a shell smaller than the crab leaves its abdomen out and a shell larger is merely
+heavy.
+
+**Three corrections, all found by measuring rather than by reading:**
+
+- **Nought fights in twenty tide cycles.** The species' most recognisable behaviour was modelled
+  and never once fired. Scattered evenly over a 280 m shore the population sat at one animal per
+  hundred square metres and every crab was the only crab that could see any given shell. Fixed by
+  placing them in **five colonies**, which is also what they do — plus a home pull in `wander`,
+  without which the colonies dissolve into an even scatter within a few cycles and take the market
+  with them. 186 fights over the next twenty cycles.
+- **Permanent homelessness.** Retirement released the crab's shell, and two or three animals ended
+  up wandering with a discomfort of 99 and nothing inside scanning range. A juvenile left holding
+  the oversized shell it grew into is the better model anyway: it trades DOWN at the first small
+  shell it meets, and *that* swap is how the big shells re-enter the market.
+- **`maxNeed` ran past the largest shell on the flat.** An adult that can never fit is a
+  structurally under-housed animal, not an interesting one. Capped below `largest / IDEAL`.
+
+Twenty cycles after all three: 385 inspections, 339 swaps, 186 fights, no homeless animals, mean
+discomfort down from 0.71 to 0.30. Time budget — forage 53%, withdrawn 32%, seek 11%, inspect
+1.6%, fight 0.8%, swap 0.8%.
+
+**The screenshot rule earned its keep again.** The limbs were first laid out at about a third of
+the size they needed, and the broadside view was unambiguous: a full-length shell with a small
+orange knot of parts under its mouth. A fitted hermit crab sticks out of its shell by roughly a
+shell's length, so the walking legs have to reach that far. Two related fixes came with it — all
+four legs were at the same `x` (a bundle, not a gait; front and rear pairs now have their own hip
+and foot positions), and the two eyes sat closer together than one eye was wide, so they merged
+into a single black bar.
+
+The shell itself read as a **banana** on the first pass: an even taper with a strong bend is a
+horn. Fixed by fattening the body whorl so it owns the first third on its own, cutting the bend,
+and stepping the taper in five whorls — the staircase profile from hornsnailbody.js. The aperture
+end also had to round in rather than end square; a flat cap at full radius is a 20 cm black disc
+sitting between the crab and its house.
+
+### Horn snail — a third biofilm grazer has to graze differently
+
+The nerite scrapes rock, the conch works the sand flat behind the waterline. A third scraper is
+only worth the slot if it does something neither does, and this one does two things.
+
+1. **It is a crowd.** Cohesion is modelled directly, so what you see is a grazing FRONT: a patch
+   works itself out, the clump slides onto fresher mud, and behind it is a scrubbed halo far
+   bigger than any one snail could make.
+2. **It is the nerite inverted.** A nerite grazes while the rock is WET. A horn snail lives higher,
+   on mangrove-fringe mud that stays damp on its own, so it grazes while the flat is EXPOSED —
+   and climbs up-shore ahead of a spring flood rather than sitting still. Same band, same food,
+   opposite clock. Its band (2.0–2.6 m CD) only floods near a spring high, so on neap days the
+   climb never happens and on spring days the whole population walks up the shore at once.
+
+Silhouette does the identification work: a long many-whorled turret against the nerite's low dome,
+and neritebody.js already explains why a rock snail cannot afford a spire. The whorls are
+*modelled*, not painted — the profile is a staircase of nine flats with a pinch at each suture, so
+the flat shading picks the rings out for free.
+
+**Tuning, and the mill.** Following §25/§28's rule, the rate was set against what the band regrows
+— and the band still ran down anyway, for thirty cycles straight, at every rate tried:
+
+| GRAZE_RATE | film under the animals, by cycle | control (same band, 8 m clear) |
+|---|---|---|
+| 0.0032 | 0.47 → 0.25 → **0.09** | 0.79 – 0.83 |
+| 0.0014 | 0.50 → 0.30 → **0.10** | 0.77 – 0.83 |
+| 0.0014 + break-out + faster travel | 0.54 → 0.30 → **0.30, held to cycle 54** | 0.78 – 0.82 |
+
+**Halving the rate only delayed it, which is the tell that the rate was not the problem.**
+Cohesion with no escape clause is a trap: the crowd eats the ground out from under itself, every
+member then tries to leave, and every member is pulled straight back into the middle of the bare
+patch by the others. Two changes fixed it and neither is a rate:
+
+- **Break-out.** If the film under the *clump's own centroid* is worked out, steer OUTWARD from it
+  instead of inward, and hold that line long enough to clear the halo.
+- **A grazer has to be able to outwalk its own damage.** At 0.045 m/s a snail could not cross its
+  clump's scrubbed halo inside one tide cycle. Travelling speed went to 0.078 — a nerite's pace.
+
+Settled state: film under the animals 0.28–0.30 against a control of ~0.79, flat from cycle 20 to
+cycle 54, with 50–70% of the population actually rasping. A permanent scrubbed halo that never
+runs away — which is what the rule was asking for.
+
+### Sand dollar — the animal you usually cannot see
+
+Every other species here is a body you follow. This one ploughs a centimetre under the sand, so
+what the camera gets is a low mound moving very slowly across the lagoon floor. The whole design
+is one number:
+
+    bury   1  fully under, mound up over it
+           0  lying clear on the drained sand, petals showing
+
+Nothing switches. The test is drawn every frame at every value of `bury` — it is simply below the
+terrain surface for most of them — and the mound's scale is `bury` too. No second model, no swap,
+no pop. The payoff is the spring low: the lagoon drains, the animal settles, the sand comes off it
+and for that one low tide it is a visible animal with five petals on its back. Over twenty cycles:
+ploughing 53%, feeding 36%, stranded 11%.
+
+**Two rendering bugs, both only visible in a screenshot:**
+
+- **The mound was bigger than the animal it was supposed to be revealing.** It scaled with `bury`
+  in height but kept its footprint, on the theory that a shallow-buried animal still displaces a
+  disc's width of sediment. The result was a 52 cm sand blister on top of a 40 cm animal at the
+  exact moment the animal was meant to be on show. If it is out of the sand, the sand is not there
+  — scale the mound in every axis.
+- **The petals came out as a pinwheel**, five wedges running centre to rim. `sweep()` caps its ends
+  with a single fan, so every triangle on that cap spans the full radius and there is nowhere for
+  a pattern to stop. A petalodium needs concentric subdivision and `sweep()` cannot make it, so
+  the test is hand-rolled out of concentric rings (the licence crabbody.js's burrow already takes)
+  with each triangle tagged top / bottom / rim, and coloured in (face, radius, angle). Winding is
+  not cosmetic here either: three groups, three directions to face.
+
+`Facet.colorize` hands a triangle two axes — along the sweep and up it. That is everything a limb
+or a shell needs and it is not enough for anything radial. **Worth remembering for the sea urchin,
+the sponge and the carpet anemone**, all of which are radial animals still on the queue.
+
+### Cost
+
+Nine InstancedMeshes for the hermit crabs (the shell mesh is indexed by SHELL, not by crab, which
+is why a swap costs nothing to draw), three for the horn snails, and **two for thirty sand
+dollars** — by a wide margin the cheapest animal in the build.
+
+### Still owed
+
+- Sea cucumber, moon snail, sand star; the four filter feeders; swimming crab, octopus, anemone
+  and anemonefish, horseshoe crab, otter (and its APEX PREDATORS row); *Ulva* and *Sargassum*.
+- The **true goby** §24 still owes §5. Still the only mortality path this shore could have.
+
+## 32. Sea cucumber, sand star, pen shell — the low flat fills in (2026-08-15)
+
+`js/seacucumberbody.js` + `js/seacucumbers.js`, `js/sandstarbody.js` + `js/sandstars.js`,
+`js/penshellbody.js` + `js/penshells.js`.
+
+The next three off ROSTER.md, and all three live on the same ground: the low flat and the lagoon
+below 1 m CD, which until now held the knobbly sea star, the sea hare and §31's sand dollar and
+nothing else. That was the interesting constraint — three species in one band have to differ from
+each other *and* from what is already standing there, or the band just gets busier.
+
+**The catalog is now 19 species, 14 of them with bodies.** Wiring was §11's four lines again.
+
+---
+
+### Sea cucumber — the one that shows its working
+
+Third deposit feeder. The body is the plainest silhouette on the shore — a sausage — so nothing
+about the outline was going to carry it. Two things do, and both are borrowed ideas pointed at a
+new target:
+
+- **The tentacle crown**, a ring of branched fronds that wipe the sand and go into the mouth one
+  after another. It is the only fast-moving thing on the animal.
+- **The casts.** §28 made the fiddler crab's pellets the receipt for its grazing instead of set
+  dressing; this is that idea run the other way. A fiddler works a ring around a fixed hole and
+  the flood erases the whole field twice a day. A sea cucumber never comes back, so its coils are
+  a **trail** — and the ring buffer that caps the cost also gives the trail its length, the oldest
+  coil being overwritten as a new one is laid. Nothing spawns, nothing is destroyed, the mesh
+  never grows, and what you see behind an animal is the last few minutes of its work.
+
+**The time budget was the bug.** First measurement: 37% feeding against 56% travelling — a deposit
+feeder that spends most of its life commuting, which is not the animal. The cause was gating the
+eating on the `feed` state. A sea cucumber is a conveyor: the crown never stops, the body just
+moves along under it when the sediment in reach runs out. So the grazing, the sweep and the casts
+moved out ahead of the state branch, and `feed` versus `crawl` now decides only whether the body
+is parked. **82% feeding, 10% crawling, 8% hunkered.**
+
+**And the rate had to come down with it**, because continuous is a much longer duty cycle: 0.030
+to 0.005, plus the crawl from 0.022 to 0.030 m/s. Settled film under the animals **0.47 → 0.46 →
+0.61 across 33 cycles** against a control of 0.94 — worked patches that recover, which is the §25
+rule holding.
+
+Stranded, it contracts. `plump` runs the whole thing off one number — an extended animal is long
+and slim, a hunkered one short and fat — which is the same trick `bury` plays for the sand dollar
+and `sink` for the sand star. Three species in this build now, none of which needs a second model.
+
+### Sand star — a second sea star has to be a different speed
+
+§23's knobbly is the postcard: rare, enormous, slower than anything here, and the whole point of
+it is that it lies out on a spring low for people to walk to. Build a second star that also creeps
+and you have built a recolour. So this one is the opposite animal on the axis that shows —
+**0.135 m/s against the knobbly's 0.035**, common instead of rare, and buried instead of
+displayed.
+
+It quarters: long, nearly straight runs, then stops and digs with the disc humped and the arm tips
+curled into the sediment. Then it drops out of sight for a while. **Buried 42%, quartering 41%,
+probing 12%, sinking 5%** — mostly not there, which is the species.
+
+The two bodies were built to be readable side by side, and every choice is the opposite of
+seastarbody.js's: flat straight-sided arms rather than thick domed ones, a comb of marginal spines
+down both arm EDGES rather than tubercles along the arm's spine, and sand-grey rather than
+orange-red. The spine comb is the identity — it is what makes the arm read as a blade, and it is
+what you find a buried one by.
+
+**It is a predator that never catches anything**, which is §30's decision applied again rather
+than dodged. It hunts buried molluscs and this shore has no infauna, so what is modelled is the
+search — quarter, stop, dig, move on. The food web lists what the animal eats because the catalog
+describes the shore, not the bookkeeping.
+
+One deliberate non-shared behaviour: **it does not lie out when stranded.** The knobbly does, and
+that is the sight the spring low exists for; if this one did the same the flat would be paved with
+stars and the rare one would stop being rare.
+
+### Pen shell — the barnacle's file, one state wider
+
+`FILTER FEEDERS` has held the barnacle alone since §22, which made the guild look like "the thing
+that lives on rocks". A pen shell stands up out of **open sand** where there is nothing to cling
+to — it anchors itself on threads it spins, point-down, with the gaping third held into the water.
+So it needed neither rockfield.js nor a surface normal: placement is the plain band-and-spacing
+scatter, and the body axis is simply up.
+
+§23's barnacle has exactly one decision in the whole file: is there water over me. This is that
+file with a second input, and the second input is the interesting one — **a pen shell claps shut
+when something passes over it**, which is the only move a sessile animal has that is not about the
+tide.
+
+**What sets it off is the sand star**, which ships in the same section and works the same flat, so
+the pairing costs nothing and is real. Fourth inter-population wiring on this shore after the sea
+star and the sea hare's ink (§27), the egret and the fiddler (§30) and hermit crabs fighting each
+other (§31) — optional argument, as all of them are. **215 claps over 36 tide cycles**; 79% open,
+20% shut with the tide, 0.5% clapped.
+
+**The valves were built wrong and the broadside caught it.** `put()` derives a part's two side
+axes from its length axis, which is exactly right for a limb — a leg does not care how it is
+rolled. A bivalve valve is a flat sheet and the whole animal is the ANGLE BETWEEN TWO OF THEM, so
+rolling it is the only thing that matters and `put` has no way to say it. The first pass opened
+the shell by tilting each valve's length axis instead, and the screenshot came back with two
+parallel plates of different apparent widths leaning the same way. Fixed with `putBasis`, which
+takes the three axes explicitly; both valves now keep the same length axis and roll apart about
+it, like a book about its spine.
+
+`SHUT_ROLL` keeps them a few degrees apart even clamped — two coincident sheets fight over the
+same pixels.
+
+### What the measurement pass found in §31
+
+Running the film probe over the whole low flat turned up a defect in the **sand dollar**, built
+last section: film under the animals **0.155 against a control of 0.94, and flat** — the signature
+of a population parked in the hole it has eaten rather than one moving through the sediment. The
+state budget looked fine (53% ploughing) and hid it completely.
+
+Two causes, both mine: it stopped to feed whenever its travel timer expired *whatever it was
+standing on*, and its rate was five times what its band regrows. The timer now only re-rolls — the
+sand decides — it leaves a spot once it is worked below `SPENT`, and `GRAZE_RATE` went 0.022 →
+0.010. Recovered to **0.28 → 0.30 → 0.37 and rising** over 33 cycles.
+
+**A stable number is not automatically a correct one.** §31's horn snail was caught by a *falling*
+film reading; this one was flat from the first measurement and still wrong. What gave it away was
+comparing two species in the same band against the same control.
+
+### Cost
+
+Five InstancedMeshes for the sea cucumbers (body, papillae, tentacles, and the cast field), three
+for the sand stars, three for the pen shells — and the pen shells' sand collars are written once
+at spawn and never touched again, like the barnacle's shells.
+
+### Still owed
+
+- Moon snail — **now unblocked**: the pen shell is the first bivalve on the shore, so a predator
+  that drills bivalves finally has something to point at.
+- Oyster, green mussel, sponge; swimming crab, octopus, carpet anemone + anemonefish, horseshoe
+  crab, otter (and its APEX PREDATORS row); *Ulva*, *Sargassum*.
+- The **true goby** §24 still owes §5.
+
+## 33. The cheliped, rebuilt — `js/crabbody.js` (2026-08-15)
+
+A new reference landed: `reference/crabclaw.jpg`, a photographed crusher claw. The old cheliped
+was built in §20 from the voxel fiddler renders and had never been looked at again, and against a
+photograph it was plainly wrong. **Both crab species share crabbody.js's limb kit (§31), so one
+file fixes the fiddler and the hermit crab together.**
+
+### What the photograph has that the old part did not
+
+| | old | reference |
+|---|---|---|
+| palm | a slab of even depth | a **teardrop** — deepest a third from the wrist, tapering to the finger hinge |
+| fingers | straight rods, a token `0.11 t²` bend | **hooked hard**, crossing near the tips |
+| gape | smooth | **cusps** along both inner edges, dying out toward the points |
+| palm surface | flat mottle | **stippled** with dark papillae |
+| hinge | nothing | a **hot orange flush** where the palm meets the fingers — the most recognisable mark on the whole claw |
+
+All five are in now. The palm profile peaks at 16–34% and falls away, with a slight `curveY` arc
+so the fingers set off at an angle to the wrist; the fingers hook on `0.38 · t^1.3` against the
+old `0.11 · t²`, and got thicker (`rad` 0.125 → 0.145, `aspectZ` 0.60 → 0.72) because the first
+pass at the new shape came back as two pale slivers.
+
+### The teeth are a profile wobble, not instanced cusps
+
+The established pattern for bumps on this shore is to instance them — the knobbly sea star's
+tubercles, the sand star's spine comb. **Not here.** Three cusps on a part carried twice per
+cheliped, twice per crab, across 84 fiddlers and 30 hermit crabs is over a thousand extra
+instances for a detail two pixels wide at the range you ever see one. So the cusps are a sine
+riding on the taper — four extra rings on one shared geometry, zero instances. Same argument
+barnacle ribs are painted under (§23).
+
+### Colour is per species, anatomy is shared
+
+The photograph's fingers are horn-black. That is right for a **hermit crab** and wrong for a
+**fiddler**: the fiddler's major claw is a display organ, and `reference/fiddler crab.png` — the
+render the species was built from — shows it orange with pale tips. Painting it black would have
+made the animal less accurate, not more.
+
+So `finger()` takes a `dark` flag and the cache carries `clawUpperDark` / `clawLowerDark`
+alongside the pale pair. Two extra cached geometries, no per-instance cost: hermitcrabs.js points
+its InstancedMeshes at the dark ones and everything else is shared. It also fixes something §31
+left: the hermit crab borrowed the fiddler's limbs *exactly*, which was cheap and correct but made
+the two species read as the same animal in different hats. A black claw against a chalky borrowed
+shell is now the hermit's own mark — and it lands on the pose that matters, the withdrawn animal
+plugging its own aperture with it.
+
+### Verifying a part rather than an animal
+
+Framing a live 25 cm crab at claw range on a 300 m shore is most of an afternoon. Faster, and the
+technique worth keeping: **assemble the cached geometry into a throwaway `THREE.Group`, park it in
+clear air above the flat and photograph that.** The parts are the real ones out of
+`CrabBody.parts()`, posed the way `crabs.js` poses them, so what you are looking at is exactly
+what ships — but at whatever size and against whatever background you like. It found the
+too-thin-fingers problem in one shot after three wasted attempts at chasing a crab around the mud.
+
+`world.setDayPhase(0.5)` with it: the first isolated shots came back at sunset and every colour
+judgement off them would have been wrong.
+
+### §33 follow-up — the fingers swapped over, and shrank
+
+Reviewed against the photograph again and two things were still wrong.
+
+**They were too big.** `MAJOR.finger` 0.52 → 0.40 against a palm of 0.82, so the fingers are now
+about half the palm's length rather than nearly two thirds. The hermit crab's `ARM.finger` came
+down the same way, 0.27 → 0.21.
+
+**They were the wrong way up.** The long swept finger was riding on TOP with the short one
+beneath it; it is the other way round. The pollex now takes the smaller rotation (+0.30 · gape)
+and sits above, and the dactyl takes the larger one (−0.45 · gape) and sweeps along underneath at
+full length.
+
+**The parts were renamed with them.** `clawUpper` / `clawLower` were named for where they sat, so
+the moment they swapped, the names were actively lying — they are `dactyl` and `pollex` now, in
+crabbody.js's cache and in both behaviour files' mesh tables. Anatomy names survive a repose;
+position names do not. The `dir` hook argument flipped to match, and the gape-side test inside
+`finger()` reads off `dir`, so the cusps stayed on the biting edge without touching it.
+
+### §33 follow-up 2 — a shut claw, and an invisible hermit
+
+**The hook was a fraction of the wrong thing.** facet.js's header warns that a curve is a fraction
+of a part's LENGTH and that a fit-to-box pass would rescale it by THICKNESS. `curveY` has the same
+trap from the other side: it is added straight to the ring's y, and `put()` scales y by `thick`
+while it scales x by `len`. So a hook written as a bare `0.38` was 38% of the finger's WIDTH, and
+shortening the fingers in the last pass (0.52 → 0.40) silently made the hook half again as strong
+relative to the part. The hermit crab, drawing the same geometry at `ARM.finger` 0.21, got it
+nearly twice as strong again.
+
+`finger()` now takes `slim` — the length:thickness ratio the species draws it at — and `HOOK` is
+what it claims to be: **0.13 of the drawn length**, for both crabs. The two ratios live in
+crabbody.js next to the palette with a note that they must track `MAJOR.finger` and `ARM.finger`.
+
+**A claw at rest was springing open.** With `gape` at zero both fingers sat exactly on the palm's
+axis, so the only thing separating them was their baked hooks — which curve in OPPOSITE
+directions. The result was a V. `REST_SPLIT` (0.12 rad) now holds them a few degrees apart at the
+hinge and the hooks close that gap over their length, so a shut claw is two fingers lying along
+the same line with the tips together. Open still opens: `gape` adds on top of the split.
+
+**A withdrawn hermit crab draws nothing at all.** §31 kept the big claw out, jammed across the
+aperture, because that is what the animal really does. It read as a crab that had failed to get
+all the way in. The claw plugs the opening from INSIDE, so there is nothing to see from any angle
+the shell can be seen from — `drawCrab` now calls `hideBody` and returns. **A shut hermit crab is
+a shell lying on the sand, and being indistinguishable from one is the whole point of the
+behaviour.** Verified by decomposing the instance matrices: every limb slot reads scale 0.
+
+### §33 follow-up 3 — the claw becomes a hinge
+
+The two fingers were still being drawn as a symmetrical pair pivoting about one point, which is
+why they read as tongs. A cheliped is not symmetrical at all:
+
+- The **pollex** is not a jointed finger. It is the far end of the palm drawn out into a point. It
+  hangs LOW on the palm's distal face and it never moves.
+- The **dactyl** is the only moving part of the entire claw. It is hinged HIGH on the palm and
+  swings down onto the pollex.
+
+So `gape` now reaches exactly one of them, and the two roots are offset along `fup` — world UP
+with the palm's own component removed, so they separate square to the palm however it happens to
+be posed. `hinge` is perpendicular to both and is what the dactyl turns about.
+
+**The numbers are derived, not tuned, and that is what makes them species-independent.** After the
+`slim` fix a finger's hook reach is exactly `HOOK x lf` — a clean fraction of its drawn length —
+so expressing the root offset as a fraction of `lf` too puts every term in the same units:
+
+    dactyl tip, unrotated   (ROOT - HOOK_DACTYL) x lf       = +0.040 lf
+    pollex tip              (-ROOT + HOOK_POLLEX x 0.84) lf = -0.148 lf
+    gap                                                       0.188 lf
+
+and the dactyl is `lf` long, so closing it needs `sin t = 0.188`, `t = 0.19 rad`. That is `SHUT`.
+The fiddler and the hermit crab draw fingers at wildly different sizes and both close correctly
+off the same constant. They live in `CrabBody.CLAW` next to the geometry they are derived from,
+because changing a hook changes the shut angle — keeping them in the behaviour file was how the
+two species would eventually drift apart.
+
+The two hooks are also no longer equal: `HOOK_DACTYL` 0.15 against `HOOK_POLLEX` 0.05. The working
+finger curves; the fixed one is nearly straight, because it is part of the palm.
+
+**Measured on a live fiddler.** Holding the arm pose and varying only the gape, the pollex's
+instance matrix is byte-identical — the fixed finger is genuinely rigid. The tip gap then opens
+monotonically 0.046 → 0.133 m across the wave, on a finger 0.192 m long. The residual at shut is
+the dactyl overshooting the shorter pollex lengthwise, which is what a real claw does.
+
+**One measurement trap worth recording.** The first check used the ANGLE between the two fingers
+and produced nonsense — 9.5° at rest, dipping to 2.4°, then rising to 19°. The angle is unsigned
+and the fingers are offset, so parallel axes do not mean a closed claw: the dactyl sweeps through
+parallel on its way open. **Measure the tip gap, not the angle.** The second trap was cruder: the
+first attempt set `c.scoop` directly, and `update()` recomputes it from the crab's own state
+before drawing, so the lever did nothing and the claw looked frozen.
+
+## 34. Everything with a body is clickable, and it glows under the cursor — `js/ui.js` (2026-08-15)
+
+### Five species were silently unclickable
+
+`pick()` skipped anything failing `if (!o.vis || ...)`. `vis` is the "currently drawn" flag, and
+only the species that actually hide individuals ever had one — the hermit crab, horn snail, sand
+dollar, sea cucumber and pen shell simply never declared the field, so `!o.vis` was true for every
+one of them and **five of the fourteen bodied species could not be clicked at all.** They appeared
+in the panel, they were in the food web, and the shore just ignored the pointer.
+
+The test is now `o.vis === false`: a species that HAS the flag and is not drawing this individual
+is skipped, and a species without one always draws. All fourteen follow on click, verified by
+dispatching real mouse events at each species' projected pixel and reading the follow bar back.
+
+Clicking a body now also **follows** it, rather than only opening the fact card. The card's own
+Follow button stays — it is the way to follow from the panel.
+
+### The hover glow, which this file said was impossible
+
+ui.js has claimed since §22 that hover-glow could not be ported because an instanced body shares
+one material across its whole population, so there is no per-animal material to tint. Both halves
+are true and the conclusion was wrong: **the tint does not have to come from the material.**
+
+Every population already writes a per-individual `instanceColor` — the tone variation that stops
+eighty crabs looking like eighty copies. three.js multiplies it into the vertex colour in the
+shader and **nothing clamps it**, so writing an animal's entry at 1.55x drives it brighter than
+the material can otherwise go. A glow is three floats in a buffer nobody else touches after spawn,
+and it costs nothing per frame.
+
+**Finding an individual's slots is generic.** For every species, mesh slot i belongs to individual
+i, or to a run of `per = count / N` of them — which is how the multi-part meshes (eight legs,
+twenty knobs, forty spines) are laid out. So no species has to declare anything. The one exception
+is the hermit crab, whose shell mesh is indexed by SHELL rather than by crab (§31 — the whole
+reason a swap is free to draw), and it publishes a `glowSlots` saying so. Without it a hovered
+hermit lights up its legs and not its house, which is worse than nothing when it is withdrawn and
+the legs are hidden.
+
+Slot counts, checked per species: fiddler 39, sand star 46, hermit 27 (26 limb + 1 shell), sea
+star 26, sea cucumber 15 (the cast field has no `instanceColor`, so the trail correctly stays
+dark), pen shell 4, sand dollar 2. Every one restores byte-exact on un-hover.
+
+**The pick runs once a frame, not on the mousemove.** ui.js stores the pointer position and
+`update()` does the work at 20 Hz, so the glow keeps up with an animal that walks under a
+stationary cursor and with the camera when it is the camera that moved.
+
+### The bug the glow exposed
+
+A flat 46-pixel pick radius is right for an animal a few metres away and absurd for one two
+hundred metres down the shore — two pixels of crab pulling a 46-pixel catchment around itself.
+It never showed while picking was click-only, because nobody clicks at empty horizon. The hover
+cursor made it obvious in one probe: the pointer turned into a hand over blank sky.
+
+The radius now scales with distance, full out to 14 m and floored at 9 px. **Making something
+visible is a way of testing it** — this had been wrong since §22 and only a cursor change found it.
+
+---
+
+> **Gap note.** §35 (moon snail, oyster, mussel, sponge), §36 (swimming crab) and §37 (*Ulva*,
+> *Sargassum*) shipped but were never written up here; ROSTER.md carries their one-line summaries.
+> This entry is §38 to stay consistent with the numbering the roster and the source comments use.
+
+## 38. Mangrove horseshoe crab — `js/horseshoebody.js` + `js/horseshoecrabs.js` (2026-08-18)
+
+Roster item 3, and the shore's first **tidal commuter**: every other animal here holds a band, and
+this one crosses its own with the water. It is also the first chelicerate on the plot — not a
+crustacean at all — which the catalogue entry leads with because it is the fact people are most
+surprised by.
+
+Two files, six InstancedMeshes, no new engine anywhere. It reuses the sand dollar's `bury` number
+(§31), the sea cucumber's ring-buffer trail (§32) and the moon snail's world-space `putWorld`
+receipt (§35), and adds nothing to `world.js`.
+
+### The outline is the species, and the first one was an acorn
+
+Nobody identifies this animal by colour or gait. They identify it by a silhouette from directly
+above, so `horseshoebody.js` hand-rolls both carapace plates out of concentric rings the way
+`sanddollarbody.js:disc()` does — `sweep()` cannot help, because a horseshoe's radius varies
+*around* the axis, not along it, and sweep has nowhere to put an `outline(theta)`.
+
+The first outline treated the shape as a circle with the back shortened: scale the radius down
+past ~110°. Photographed top-down it came out as an **acorn** — a smooth convex curve, widest
+amidships, tapering to a rounded rear, with every identifying feature missing. A horseshoe crab is
+not that shape at all. It is widest at the **rear corners**, cuts in hard between them, and draws
+each corner out into a genal spine. No single scale factor on a circle can make a radius grow and
+then collapse, so the shipped version is three terms — the arch, a lobe that swells at the corner,
+and a cut that only bites past it.
+
+**And then the spines still did not show.** They are ~0.10 rad wide, and at `SEG` 44 the angular
+step is 0.143 rad, so each spine landed on one vertex and read as a dent. 64 rounded them into
+lobes. 96 gave 0.065 rad and they came to a point. Geometry is built once and instanced, so the
+extra rings are paid for at load and never again — **count the angular step against the smallest
+feature before assuming the shape function is wrong.**
+
+The broadside shot caught two more in one frame, both the usual kind: a dome at 0.235 high with a
+`(1-u²)^0.75` falloff that photographed as a limpet (fixed by moving the exponent inside, so the
+vault stays level to ~70% of the radius and then turns down), and legs at 0.20 units long hanging
+clear below the rim like a spider's (fixed at 0.125 — a real one's legs do not show past the rim
+from the side).
+
+### Where it lives was measured, not chosen — and the thresholds set it
+
+This is the part worth reading before building another mobile species.
+
+The roster asked for an animal that ploughs the **mangrove fringe** on the flood. Three tuning
+passes tried to put it there and all three drifted:
+
+| spawned at | what happened |
+|---|---|
+| 1.55–2.95 m CD (in the fringe) | 12 of 12 stranded for a minute at a time, mean-z swing under 1 m |
+| 1.30–2.30 m CD | walked 20 m seaward over 6 cycles and stayed |
+| 1.75–2.45 m CD | walked 10 m seaward over 10 cycles, still going |
+
+None of that was a bad `ZONE`. The band a mobile species settles in is set by **which of its two
+steering decisions runs longer**. For an animal at height `h` with the tide topping out at `high`:
+
+```
+landward window   tide runs h+ADVANCE .. high   =  high - h - ADVANCE
+seaward window    tide runs h+RETREAT .. h      =  RETREAT
+```
+
+The seaward window is a *fixed span of tide* — it does not care where the animal is — while the
+landward one shrinks the higher up the shore it gets. So it walks up until the two match and then
+stays, at `h = high - (RETREAT + ADVANCE)`. Mean high water here is ~2.65 m CD, so 0.60 and 0.15
+predict 1.90; thirteen measured cycles sit at **1.85** and hold, with net drift 2.6 m against 9.7
+before. **If a population drifts, do not move it back — work out which of its two decisions is
+running longer.**
+
+Raising `RETREAT` strands fewer animals *and* moves the whole population down the shore. There is
+no setting that does both; that trade is the knob.
+
+The honest consequence: **the mangrove fringe pairing did not survive the tide model.** The fringe
+sits at 2.88–3.05 m CD and only floods on a spring high, and an animal living up there is dry for
+so much of the cycle that its commute — the entire point of the species — never fires. It ships as
+an upper-mudflat animal that lives *below* the mangroves rather than in them, and the catalogue
+text says so.
+
+### It knows which way the tide is going, and it has to
+
+The first steering model used a depth error alone, with nothing in the code aware of the tide's
+direction. It is the nicer design and it produced drift rather than a commute: a depth band wide
+enough to be usable covers forty metres of a flat this gently sloped, and the waterline crosses it
+at metres per second, so nothing that walks can track the edge.
+
+It reads `world.tideDir` instead — which is the more truthful animal anyway, since horseshoe crabs
+are a textbook case of an **endogenous tidal clock** and a real one is not inferring the tide from
+how wet it is.
+
+A second measurement caught the follow-on: gating feeding on "no commute bearing at all" left the
+budget at 4% feeding against 34% walking — a deposit feeder that never fed. It now stops on rich
+mud *during* a flood run, because working the mud is what it goes up there for, and declines only
+when it genuinely cannot afford to (falling tide, water already low). Final budget over 13 cycles:
+**28% ploughing, 15% working, 57% stranded**, which is the right shape for an animal whose
+signature state at low water is buried and waiting.
+
+### The furrow is the receipt, and it is a line
+
+§28 made the fiddler's pellets its receipt and §32 made the cucumber's casts its own; this animal
+ploughs *through* the top of the mud rather than walking on it, so its receipt is a furrow. It is
+laid **per metre travelled, not per second** — a record of distance, so an animal stopped feeding
+does not pile up trench in one spot.
+
+The first pass laid a segment every 0.24 m at 0.78 body widths across, standing a fifth of a body
+unit proud, and photographed as a scatter of flat angular plates lying *on* the flat — cardboard,
+not a trench. Three changes fixed it together: segments **shorter than they are long** so
+consecutive ones overlap into one continuous line, **low** enough that only the levee crest stands
+proud, and **sunk** so the mud closes over the rest. The palette went darker at the same time, so
+turned ground reads as wetter than the flat it cuts rather than paler.
+
+### Wiring
+
+Exactly the five touch points §31 established, and no more: the two species files, one `sim` key in
+`species.js`, one `pops` entry plus a spawn and an `update` call in `main.js`, and a follow distance
+and three state labels in `ui.js`. No `vis` field — it never hides an individual, and §34's rule is
+to add one only if it does.
+
+## 39. Carpet anemone + anemonefish — `js/anemonebody.js`, `js/anemones.js`, `js/anemonefishbody.js`, `js/anemonefish.js` (2026-08-18)
+
+Roster item 2, and the first section on this build that ships a **pair**. Neither species is worth
+much alone: an anemone with nobody in it is a sessile predator of the sort this shore can already
+imply, and an anemonefish without a host is a small orange fish with no reason to be here. What they
+are together is the seventh inter-population wiring and the only mutualism on the plot.
+
+### The anemone is the sponge's answer with a different third axis
+
+`spongebody.js` (§35) hand-rolled concentric rings because `Facet.colorize` reads two axes and a
+sponge needs a third — the **angle** about its own centre, for growth bands. This one needs a third
+too and it is a **different** third: **height above the disc surface**, because a carpet anemone
+reads entirely as the difference between the tentacle tips and the skin between them.
+
+That distinction cost a render to get right. The first pass raised **every other vertex** in a
+checker and scored each triangle by how many of its corners were raised — which is a number that
+looks correct and paints nothing, because at that cell size every triangle has exactly two raised
+corners out of three. Every triangle scored the same and the disc came back in one flat green. The
+fix is the cell, not the score: nubs are raised in **2x2 blocks** so a triangle can sit wholly
+inside a raised cell or wholly inside a sunk one. That also puts a nub at ~4 cm on a 45 cm animal,
+coarser than a real tentacle and the right size for the distance anyone will ever see one from —
+the same call the moon snail's sand collar made (§35).
+
+**A one-vertex checker is not a pattern, it is a constant.** If a per-triangle score comes back
+uniform, look at the cell size before looking at the scoring.
+
+### The contraction is the colour change, and it costs nothing
+
+Two parts: a green-brown **disc** and an orange-red **column**. Both are real — a Haddon's carpet
+anemone is drab on top and orange underneath — and because the column is exactly what a contracted
+one shows, the animal changes colour on the ebb with no tinting code at all. The parts simply trade
+places. The sponge had to do that job with `instanceColor` because a sponge has only one part to
+show; this one gets it out of the geometry.
+
+One knob drives all of it. `open` is 0 shut .. 1 spread, and column height, column girth, disc
+diameter, disc height and disc elevation are all read off it — the pen shell's pattern (§32) with
+two more reasons to close. Four states, four target values: `spread`, `fold` (something walked onto
+it), `embrace` (an anemonefish is sheltering in it), `shrunk` (the water has gone).
+
+### Two proportion bugs, neither visible in code
+
+**The column was wider than the disc.** `COL_R` spread was 0.60 against a `DISC_R` spread of 1.00 —
+radius against diameter, in the same table — so the collar meant to hide under the carpet was half
+again as wide as it. The render came back as an orange slab wearing a small green cap, which is the
+*shut* animal's silhouette with the *spread* animal's numbers.
+
+**Then the column poked through its own disc.** With the widths fixed, the spread column still
+finished 0.02 above ground while the disc's underside sat at 0.077, and the column's jittered top
+cap interpenetrated the oral cone. From directly above that reads as a deliberate orange starburst
+radiating from the mouth. The fix is that a spread anemone's trunk finishes **below ground** —
+which is what the file header claimed all along.
+
+Both are the same class of mistake. **Always request the broadside**, and for a radial animal
+request the three-quarter-from-above as well.
+
+### The fish: `sweep`'s `t=0` is the TAIL
+
+The body is built along +X and every species here puts its head at +X — the eye and the tail fin in
+the behaviour file are what decide that. But `sweep` runs `x` from 0 to `len`, so **t=0 is the −X
+end**, the tail. The first pass wrote the three bar positions as nose-distances, fed them straight
+to `colorize`, and produced a fish with its head bar on its tail wrist.
+
+Eighteen species have not hit this because a blunt cylinder hides it completely — the mudskipper's
+profile carries the same reversal and nothing shows. A barred fish cannot hide it at all. **If a
+part is symmetric enough that either orientation looks plausible, the orientation is not verified,
+it is merely unrefuted.**
+
+### Bar resolution is §38's lesson in colour
+
+`colorize` is per-**triangle**, so the finest band a swept body can draw is one ring step wide. At
+the mudskipper's 9 rings that is 0.11 of the body, the 0.022 black bar-edging fell between
+neighbouring triangles, and the head bar came back as a **checkerboard**. 72 rings puts the step at
+0.014, comfortably under the edging. Geometry is built once and instanced, so the extra rings cost
+nothing per frame.
+
+§38 found the same rule in outline (the horseshoe crab's genal spine at SEG 44/64/96). It is the
+same rule: **count the steps against the feature before assuming the shape function is wrong.**
+
+Two fin lessons fell out of the same renders. The body is 0.27 deep either side of the midline,
+three times the mudskipper's, so the mudskipper's fin offsets buried the dorsal and the anal inside
+it. And a fin root **is not a straight line** — this back drops from the shoulder to the tail wrist
+by more than the dorsal's own height, so on a level root the fin's tail end floated clear of the
+fish and read as a lump of orange hovering over it. `blade`'s `sweepY` bends the whole blade down to
+follow the body, which is what it is for, and it is one line instead of two parts.
+
+### The egret could not frighten the fish, and the constants said so before the code did
+
+The obvious threat was the little egret (§30): it already walks this flat and already sends fiddler
+crabs down their burrows. A 600-second run fired the dive **exactly zero times**, and the reason is
+in the two species' own numbers rather than anywhere in the code — an egret wades in a hand's depth
+of water, this fish withdraws to the channel below 0.30 m of it, and those two windows do not
+overlap on any tide. **A predator that is only present when the prey is gone is not a wiring, it is
+a decoration.**
+
+The swimming crab (§36) has the opposite schedule — active submerged, buried on the ebb — so it is
+on the flat exactly when the fish is, and it is a real predator of small fish. It is also already
+one of the two animals that makes the anemone clench, so **one crab paddling past produces both
+halves of the partnership in the same frame**: the host closing on the intruder and the guest diving
+into the closing host. That was not designed in; it fell out of picking a threat that could actually
+be there.
+
+### Counting the events, per §31's rule
+
+Over 600 sim-seconds across 18 anemones and 26 fish:
+
+| | |
+|---|---|
+| anemone | spread 71% · shrunk 17% · **embrace 11%** · fold 0.6% |
+| fish | hover 41% · away 29% · sortie 10% · arrive 10% · **nestle 9%** · dive 0.9% |
+| events | **12 folds**, **90 dives** |
+
+The first run of this table returned **2 folds** — the wiring was correct and effectively not
+modelled, which is the trap §31's hermit-crab shell fight fell into. `FOLD_R` was 0.85 of the disc
+radius, ~0.20 m of reach on a 0.46 m animal. A real anemone's catch is the disc **plus** the reach
+of the tentacles round its edge, so 2.4 (~0.55 m) is both more honest and roughly the "twice its own
+size" the pen shell's `CLAP_R` already uses.
+
+### The one ordering constraint in `main.js`
+
+The fish sets `host.guests` and the anemone reads it, so `anemones.update` runs **before**
+`anemonefish.update` and clears the count for the frame it is about to be told about. Reverse them
+and every embrace is a frame late. It is the only pair of update calls in the file whose order
+matters.
+
+### Wiring
+
+The five touch points again, doubled for the pair: four species files, two `sim` keys in
+`species.js`, two `pops` entries plus two spawns and two `update` calls in `main.js`, and two follow
+distances with their state labels in `ui.js`. The fish carries a `vis` field and sets it every frame
+(§34) because it genuinely leaves the plot; the anemone does not, because it never does.
+
+And one argument on this shore is finally **not** optional: `AnemoneFish.spawn` with no anemones
+returns an empty population, on purpose. Every wiring since §27 has been written so that neither
+species needs the other. A homeless anemonefish is not a thing that happens.
+
+---
+
+## 41. Day octopus — `js/octopusbody.js` + `js/octopuses.js` (2026-08-19)
+
+Roster item 1, and the file that was flagged from the start as **the hardest body in the roster**.
+It earned that, but not where it was expected to: the eight arms went in cleanly and the two real
+bugs were both in the *frame*, not the limbs, and both were invisible in code review.
+
+### The animal that has an address
+
+Every predator on this shore since §30 catches nothing on purpose, and the octopus does not break
+that. What it adds is the fourth **receipt** — after the fiddler's pellets (§28), the moon snail's
+sand collar (§35) and the horseshoe crab's furrow (§38) — and the first one that is a *record*
+rather than a trace. A den with fourteen shells outside it has been lived in longer than a den with
+three.
+
+That is also the structural gap it closes. Nothing here had a home it chose: the fiddler defends a
+territory round a burrow it re-digs anywhere, the swimming crab digs in wherever the ebb catches it
+(§36), and everything sessile is stuck where it settled. The octopus keeps one den, and the whole
+state machine is a loop out of it and back — `den → emerge → hunt → pounce → jet → home → den`.
+
+### 192 pounces in 600 seconds, and why no threshold would have fixed it
+
+The first run counted the events per §31's rule and got **192 pounces across six animals** — better
+than five a trip. The instinct is to reach for `POUNCE_R` or `SCAN_R`. Neither is the problem.
+
+A real octopus does not eat where it caught something; it carries the crab home and works on it
+inside, **which is the entire reason the shells pile up at one address instead of scattering across
+the flat**. Making a successful pounce end the trip — set `carry`, jet home, drop the shell on
+arrival — took the count to 40 meals from 49 trips, and produced the midden as a side effect rather
+than as a separate feature. The receipt and the rate came out of one change.
+
+The misses matter too. `POUNCE_HIT` is 0.55, and without it the midden is a clock rather than a
+record: every den would carry the same pile after the same number of tides.
+
+| | 600 sim-seconds, 6 octopuses |
+|---|---|
+| budget | den 54% · hunt 32% · **pounce 7%** · jet 3.4% · emerge 1.8% · home 1.5% |
+| events | **49 trips**, **73 pounces**, **40 meals**, 71 shells on the middens |
+
+### Both bugs were in the body frame, and the matrices found both
+
+Neither of these is visible in a code review and neither needs a renderer to catch — §30's
+"decompose the instance matrices" answered both in one call. There was no browser available in this
+session at all, and it did not turn out to matter.
+
+**The floor clamp is a plane, not a number.** Arm tips were clamped at `-lift` in body-local Y, on
+the reasoning that the pitch is small. It is not small. The body basis is `Ry(yaw)·Rz(-pitch)`, so
+world up in body-local is `(-sin p, cos p, 0)`, and a point two body units forward on a crown
+pitched 0.16 rad down sits 0.32 units below the origin — more than the whole of `lift`. The tips
+were **15 cm under the sand** while the clamp reported every one clear. The correct test solves the
+plane: clear when `lift - x·sin p + y·cos p >= FLOOR_CLEAR`.
+
+Fixing that left 7 cm, because the clamp was applied to the running position *after* the segment was
+placed — so the last segment of every arm was still drawn along its unclamped direction. **Clamp the
+endpoint, then derive the direction from it.** That also gives the crawl posture for free: an arm
+aimed below the seabed gets laid flat *along* it, which is what a crawling octopus's arms do, and it
+needs no solver.
+
+**A radial crown stacks its own arms in plan view.** Arm `a` at roll φ and its mirror at π−φ have
+identical sines and opposite cosines, so seen from above the two are one on top of the other — eight
+arms occupying four bearings, with two of the eight plan-view gaps at 0°. A sweep of `DOWN_K` from
+0.16 to 0.06 moved the smallest gap from 2° to 1°.
+
+**If a tuning sweep barely moves the number, the number is not controlled by that knob.** The
+stacking is inherent to the construction, not to any parameter of it — and the construction is
+wrong for this posture anyway. A crawling octopus does not spread its arms *around its body*; it
+fans them *across the seabed*, which is a bearing and an elevation rather than a roll and a pitch.
+So both are built and blended by a seventh number, `fan`: 0 for the jet, where the arms really are
+gathered evenly around the axis, 0.85 for the crawl.
+
+|  | lowest tip | tips on the sand | plan-view gaps |
+|---|---|---|---|
+| den | 0.016 m | 4/8 | 6–233° |
+| hunt | 0.016 m | 7/8 | 20–134° |
+| pounce | 0.016 m | 6/8 | 20–124° |
+| jet | 0.096 m | 0/8 | 44–46° around the body axis, span 0.53 m |
+
+### The larder was checked vertically, and it was half wrong
+
+ROSTER.md said this animal's food was complete: swimming crab (§36), pen shell (§32), oyster and
+mussel (§35). §39's rule is to check that a predator and its prey are ever on the shore at the same
+time, and the vertical version of that question answers itself before any scanning code:
+
+```
+swimming crab   -0.15 .. 0.85 m CD, z 26-64   overlaps
+pen shell        0.10 .. 0.90 m CD, z 26-62   overlaps
+oyster / mussel  1.30 .. 2.10 m CD            — high boulders, dry at every low tide
+```
+
+The oyster and the mussel are four hundred vertical millimetres above anything that cannot leave the
+water. Two rows came off `eats` rather than two scans going in that would have fired zero times.
+
+### Colour is the behaviour, and §36's lesson was used forward
+
+The swimming crab could not be tinted blue because its baked palette was fiddler-orange with almost
+no blue channel for `instanceColor` to multiply into (§36). This animal has to run from sand-pale
+through dark red-brown to blanched white within a second, so `octopusbody.js` bakes it in a
+deliberately **neutral mid-tone** — a canvas, not a finished skin. A "correct" sand-brown octopus
+baked in would have been the same trap one species later.
+
+One consequence found on the way: a species writing `instanceColor` per frame collides with ui.js's
+hover glow (§34), which saves a colour, multiplies it by 1.55, and writes the saved value back on
+unhover — over the top of anything written since. A settled animal would then wear the stale colour
+indefinitely. Forcing a refresh twice a second costs a few hundred `setColorAt` calls across the
+whole population and needs no coupling to ui.js. `sponges.js` has the same shape and the same hole.
+
+### No ink, and that is a decision
+
+Ink is the one thing everybody knows an octopus for, and there is nothing here to ink at. Nothing on
+this shore eats one — the swimming crab is prey, the egret works a drained flat this animal is never
+on, and the sea hare already owns the ink gag (§27). Writing the startle now would be writing a
+behaviour that never fires, which is precisely §31's hermit-crab shell-fight trap. It goes in with
+the **smooth-coated otter**, which is the last item on the roster and the reason `APEX PREDATORS`
+still does not exist.
+
+### Wiring
+
+The usual five touch points: two species files, one `sim` key in `species.js`, one `pops` entry plus
+a spawn and an `update` call in `main.js`, and a follow distance with state labels in `ui.js`. No
+`vis` field (§34) — the den is in the channel, which never exposes, so this animal is never off the
+plot and never hidden.
+
+Eight InstancedMeshes: mantle, head, eye, armSeg (8 × 5 = 40 slots an animal), web, siphon, and two
+that are furniture rather than animal — `lair` and `shell`. Those last two are deliberately excluded
+from the per-frame skin tint, or a white pounce would blanch a shell pile twenty metres away.
+
+Two other notes worth keeping. The **den mouth is a sunk plug, not a bowl**: `sweep`'s sides face
+outward, so looking down into a bowl shows its back faces, the FrontSide material culls them, and the
+den renders as a tear with the seabed visible through it — facet.js's warning, one shape further on.
+And the **jet is the one time this animal travels backwards**: body +X is the arm crown, so during
+`jet` the target yaw is `heading + π`, and easing through that half-turn reads as the animal spinning
+round to go, which is what it does.
+
+### The range it actually works, measured rather than claimed
+
+`RANGE` is 22 m, but a crawl at 0.38 m/s against a 90-second tide cycle does not spend it: over 600
+seconds the population never got further up-shore than z ≈ 49 or onto ground above 0.25 m CD, which
+is the sandbar crest. The lagoon proper stays out of reach. That is the honest number and it is left
+as it is — §38's rule is that where a mobile species settles is set by its steering thresholds, and
+here the binding one is the clock, not the distance.
+
+## 42. Smooth-coated otter — `js/otterbody.js` + `js/otters.js` (2026-08-20)
+
+The last item on the roster, and the one two other species were waiting on. It creates the
+`APEX PREDATORS` row `foodweb.js:28` has carried a note about since §9, and it is what finally lets
+the octopus ink (§41) — a behaviour deliberately left unwritten because nothing on this shore ate an
+octopus yet.
+
+Three things here are new. It is the **only group** on the shore: every population before it is a
+scatter of individuals that happen to share a band, and a romp is one animal made of six. It is the
+first predator that **actually kills** — it calls `gobies.take()` and the goby's own one-in-one-out
+bookkeeping absorbs it, so an apex predator arriving allocates nothing. And it **pushes**: every
+wiring since §27 has been a pull, the prey scanning for the predator, which is right when the
+interaction belongs to the prey and wrong when running a fish down is the predator's whole
+behaviour.
+
+### There was no browser this session either, and the matrices found four bugs
+
+§41 caught two body-frame bugs by decomposing instance matrices with no renderer available. The same
+harness — a node script that builds the world headless and drives `update()` by hand at dt=1/30 —
+found four here, three of which no code review would have shown.
+
+**The dive never went down.** `ATT.dive` sinks the animal 0.42 body units under the surface, which is
+a *posture*, not a depth, and the chase was written in x and z only. Over the lagoon at high water
+that left a diving otter **2.19 m above** the goby it was taking, and taking it anyway. This is §41's
+vertical check turned on the hunt instead of on the larder: the header's own overlap table asked
+whether these two are ever on the shore at the same time and answered yes, and never asked whether
+they are ever at the same *depth*. A dive now aims at the prey's own height and `TAKE_R` is a sphere.
+
+| vertical gap to prey at closest approach | before | after |
+|---|---|---|
+| median, all chases | — | 0.20 m |
+| kills taken through more than 0.55 m of water | routine | **0** |
+
+**Hauled limbs 5 cm under the bar.** §41's lesson verbatim, one species on: a clamp against the
+ground is a PLANE, not a number. One departure — §41 clamps an arm's endpoint and lets the segment
+stretch to reach it, which is fine for an octopus and reads as a broken bone on a leg. This re-aims
+the segment upward about its own bearing at rigid length. The foot is clamped as a bone too, because
+it is 0.20 body units long, as long as either leg segment, and clamping the ankle while the paddle
+carries on downward buries exactly the part that is supposed to be resting on the sand.
+
+**`ReferenceError: sc is not defined`.** A later edit used the update loop's scale variable inside
+`walkLimb`, where it is not in scope. `node --check` passes it — it is a reference error, not a
+syntax one — and it would have taken the whole sim down on reload. Only running the thing catches
+this class. The harness is worth having for that alone.
+
+### Two deadlines, and the guard was written against the slack one
+
+The haul-out would not fire: three trips started, one arrived, `haul` at **0.0%** of the clock. §31's
+"a behaviour that never fires", surviving one earlier round of tuning by being *almost* fired —
+`HAUL_R` had already been cut 60 m to 30 m for it.
+
+The first fix priced the trip against `romp.visitT` and **changed nothing**, which is the useful part.
+`VISIT_MAX` is 95-160 s and the tide cycle is 90 s, so the visit timer never expires: the romp always
+leaves because the water went. A guard on `visitT` passes every time it is asked.
+
+**When a behaviour will not come out, check which of the clocks around it is binding** — §38's rule
+about steering windows, asked of time instead of distance. `Tide.secsUntilBelow` (new, and
+deliberately *not* routed through `tideAt`, which records `lastT` as a side effect for `setPhase` and
+`jumpToSpringLow` — a predictor must not move the thing it predicts) answers the tight one. `HAUL_R`
+then went back **up** to 70 m, because the metres were never the constraint: the romp arrives 50 m
+from the only ground it can lie on, and at 30 m it could not see the bar until the tide had turned.
+
+That fix then ate the hunt — kills fell from 8 per 900 s to 3 per 1800 s, because hunting was gated
+on `romp.state === 'work'` and `tohaul` had taken a third of the time on the plot. `tohaul` is travel
+through the water the romp was working a moment earlier, and the individuals have no `tohaul` state
+at all; they are simply swimming. `haul` is the real exclusion.
+
+| | 1800 sim-seconds, 6 otters | |
+|---|---|---|
+| | before | after |
+| haul-out trips completed | 1 of 3 | **4 of 4** |
+| `haul` share of clock | 0.0% | 2.8% |
+| kills | 3 | **10** |
+
+### The animal walks, and the header said it did not
+
+`otterbody.js` argued there was no gait to get wrong: a romp arrives swimming, works the flat
+swimming, and hauls out only to LIE DOWN. The numbers killed it. "The ground has the last word"
+(this section's own rule) labels any animal on dry sand `haul` whatever the group is doing, and the
+haul-out trip crosses ground the ebb has drained — so the animal was travelling across the sand
+**posed sprawled, sliding on its belly**. Lying and crawling are different postures and the ground
+cannot tell them apart; only the speed can, with a gap in the middle (§32's BARE/SPENT/GOOD, asked of
+a gait) so an animal on the threshold does not flicker.
+
+**A walk cycle's phase must be driven by DISTANCE, not by time.** A foot in stance holds its world
+position while the body travels over it, so advancing the cycle by metres travelled makes a planted
+foot's backward slide in body-local space exactly equal to the distance the body advanced — zero
+slip at any speed, with no gait clock to tune against the steering. Time-driven phase is what makes
+a walk skate, and no gait constant repairs it. Over one cycle the body advances `STRIDE`; over the
+stance it advances `STRIDE * DUTY`, and that is the foot's excursion. It is the only number in the
+gait with a right answer rather than a taste.
+
+This is also the one limb on the animal that §36's rule sends to **IK** rather than posing: a foot in
+stance has a job to do on the ground. The swimming limbs stay posed and were not touched.
+
+**Straight-line planting is not planting.** Distance-driven phase holds a foot still while the animal
+walks straight and fails the moment it turns, because a body-local point swings through the world
+with the body — and these animals steer toward a formation slot almost constantly. Measuring the two
+cases separately is what showed it; the pooled number hid it in a mean.
+
+| stance frames, slide per frame against an 8.7 cm stride | phase only | world plant |
+|---|---|---|
+| straight-line | 0.07 cm (ratio 0.008) | **0.02 cm (0.002)** |
+| turning | 1.43 cm (ratio **0.164**) | **0.07 cm (0.008)** |
+
+So the phase decides *when* a foot is down and where it lands, and after touchdown the plant is
+remembered in **world metres** and converted back each frame. A foot left behind by a hard turn
+re-plants rather than dragging, which is the corrective step a real quadruped takes.
+
+The budget settles the original argument: **`walk` 4.7% against `haul` 2.0%** — more than twice as
+much land time spent moving as lying, all of it previously drawn as a sprawl.
+
+### What is deliberately not here
+
+No otter-on-crab wiring, though a real romp takes crabs and the swimming crab is on the right band at
+the right tide. It would mean a second kill path into a population with no mortality bookkeeping,
+which is a bigger decision than a food-web row. The fiddler and the egret were both declined by
+reading constants rather than by running a scan and counting zero (§39): the fiddler's band is either
+dry, where a swimming otter never goes, or flooded, in which case the crab is underground; and the
+egret is a low-water visitor that is gone before this one arrives, by construction.
+
+### Still owed
+
+**No rendered frame of this animal exists.** No browser was available in this session, and the house
+rule since §31 is to always request a broadside. Every check above is geometric — the matrices say
+the parts are in the right places and the feet are on the sand; they cannot say it looks like an
+otter. The gait's tempo (`STRIDE`, `LAND_SPEED`) and ride height (`WALK_LIFT`) are single constants
+and are the likeliest things to want moving once somebody has watched it.
+
+`INK` fires but is rare: 3, 5, 2 and 0 events across four runs. Worth a long run before the rate is
+called settled.
+
+## 43. The otter, measured against the GLB — and finally looked at (2026-08-25 → 09-01)
+
+§42 shipped this animal blind and said so. This section closes that: the body was rebuilt from
+measurements off a reference mesh, and then — for the first time — frames of it were rendered and
+examined. Both halves found things the other could not have.
+
+### The body is now ONE surface, and the four joins were the problem
+
+`otterbody.js` used to build the tail, torso, neck and head as four separate sweeps with their own
+radii, butted end to end. Every one of those joins was a STEP. The rump ended in a cliff with a
+needle coming out of it and the skull sat on the neck as a detached box, and tuning the four radii
+against each other never fixed it, because **a step is what you get whenever two independently-chosen
+radii meet.**
+
+So the animal is one profile `BODY_R x BODY_P(s)` over a single parameter running tail tip (s=0) to
+nose (s=1), cut into fourteen links. Continuity is now structural rather than tuned: adjacent links
+call the same function at the same shared `s`, so they cannot disagree about how wide the animal is
+where they meet. The same argument applied twice — a per-link constant aspect made the WIDTH
+continuous and left the HEIGHT stepped, by 23% of the local radius at the rump, so `aspectY` is read
+along each link too.
+
+### Measured, not eyeballed
+
+Fitted to `reference/otter/River otter by Poly by Google - dJW3JeUWXQ-.glb` — 1084 triangles, 257
+vertices once its ground disc is discarded, one welded shell with no skeleton, so it can only be
+measured and rebuilt, never imported part by part. Cross-sections were read at ten stations and
+normalised to a torso length of 3.7 in the GLB's own units.
+
+| | before | measured |
+|---|---|---|
+| head half-width | 0.37 | **0.238** |
+| nose | blunt, held full width to the end | tapers to **0.30** of the skull |
+| tail length | 0.68 torso lengths | **1.04** |
+
+All three are silhouette errors, which is why re-tuning colour and facet counts had never touched the
+problem. Colour was sampled the same way — the GLB's base-colour texture decoded and read through the
+mesh's own UVs — and settled two things: back, flank and tail are all 0x321d16, and **the reference
+has no pale belly at all** (its belly samples 0x311c15, the same as its back), so the cream underside
+this animal used to have is gone and only the throat bib survives.
+
+### THE FACE WAS INSIDE THE HEAD, and only a render could say so
+
+The one-surface rebuild made the head a slice of the body profile instead of its own sweep. The skull
+got wider — the real skin is at **0.208**, where the typed constant next to the eye and ear offsets
+still said the skull was "0.122 in radius". Those offsets were distances. So they stayed where the old
+skull's skin used to be — 0.08 body units, about 6 cm of otter, inside the new one:
+
+| fittings, fraction of vertices under the skin | before | after |
+|---|---|---|
+| ear | **100%** | 40% |
+| eye | **100%** | 66% |
+| whisker fan | 93% | 40% |
+
+An otter with no eyes and no ears. Every geometric check in §42 passed straight through this, because
+nothing was in the wrong place *relative to what it was told the head was* — the parts were exactly
+where they were asked to be, and the thing that had moved was the surface.
+
+**A number that describes a surface must be ASKED OF THE SURFACE, not copied next to it.** So
+`otterbody.js` exports `halfW(s)` and `halfH(s)` off the same profile the links are built from, and
+`EYE.y/.z`, `EAR.y/.z` and `WHISK.y/.z` stopped being distances and became a DIRECTION out of the
+centreline. `onSkin` rides the local cross-section ellipse and returns where the skin actually is. A
+fitting can no longer be buried by somebody re-shaping the head; the only way to sink one now is to
+ask, which is `EYE_SINK` (an eye is set INTO a face) and `EAR_SINK` (an ear sits ON one), both
+fractions of the local radius rather than absolute depths. The state budget is byte-identical across
+the change — it is placement, not behaviour.
+
+### The harness that had been drawing the wrong animal
+
+The renders that finally caught this needed the offline rasterizer fixed first. It read instance `oi`
+out of every InstancedMesh — correct for the fourteen body links, which are one per animal, and wrong
+for every fitting: whiskers are 6 per otter, legs 8, feet 4, ears and eyes 2. So for otter 0 it drew
+otter 0's ear, otter 0's third whisker, otter 1's leg, and hung them in space. That is why the first
+broadsides showed an otter with no legs and a few detached blocks floating beside it, and why a
+session went looking for a limb bug that was never there. The slot is `oi * per + s`.
+
+With that right, the geometry checks out. Limb chains close exactly — knee gap and ankle-to-foot gap
+both **0.0000** in `haul` and in `walk` — the hips sit inside the body outline at both stations
+(0.155 against a local half-width of 0.232 fore and 0.198 hind), and no limb rises above the spine in
+any state. The apparent gaps and the leg-through-the-back were both the three-quarter projection
+mixing y and z; a broadside settles that class of question and a 3/4 view does not.
+
+### What the numbers say now
+
+Gait, over 6002 walk frames:
+
+| | |
+|---|---|
+| true-stance foot scrub per frame | median **0.000 cm**, p95 0.015 cm |
+| feet more than 2 cm under the sand | **0.01%** |
+| re-plants per stance frame | 0.004 |
+
+State budget over 2400 sim-seconds, 6 otters: swim 73.1%, **walk 16.4%**, haul 7.6%, dive 2.1%,
+catch 0.8% of on-plot time; 8 visits, 8 kills. The walk that §42 argued did not exist is now the
+second-largest thing this animal does.
+
+### Still owed
+
+**A re-plant is a 29 cm jump in one frame.** When a foot is dragged past full leg reach it is
+re-planted at the phase position, and that snap is bounded by the leg's own reach — median 29.2 cm
+measured, against a 39 cm stance excursion and a 63 cm cycle. It fires on 0.4% of stance frames, so roughly once every 7.5
+seconds per foot while turning. A real corrective step lifts and swings; this one teleports. The fix
+is to force the limb into swing rather than to move its plant, and it was left alone because the
+frequency is low and the alternative is a second phase authority fighting the first.
+
+`INK` is still unsettled from §41-42: 3, 5, 2 and 0 events across four runs.
+
+## 44. The otter is the reference mesh now — `Otter.obj`, skinned (2026-09-01)
+
+§43 rebuilt this animal by MEASURING a reference and re-sweeping it procedurally. This section stops
+doing that: `reference/otter/Otter.obj` **is** the otter. It is un-posed, faceted, coloured from §43's
+sampled palette, and skinned per frame by the same centreline and the same limb IK that drove the
+swept body. The behaviour is untouched — every state, the romp, the hunt, the haul-out clock and the
+kills are the code §42 wrote — and only what wears them changed.
+
+### The mesh, and the one piece of luck in it
+
+1027 vertices, 1000 quads, quad-dominant and clean (889 vertices at valence 4). One welded shell —
+so it cannot be imported part by part, same as the GLB — **plus two loose 37-vertex components,
+which are the eyes.** Those come free: the bake colours them flat black and weights them to the
+skull, and the animal gets eyes without a single line of placement code. The ears are welded into
+the head and are simply skin. No `.mtl` ships with it and its one material carries nothing, so the
+palette is still §43's, decoded from the *other* reference's texture.
+
+### Skinned, not sliced
+
+The obvious way to use a mesh in this codebase is to cut it into rigid links and hand them to the
+existing InstancedMesh kit, which every other body here is. It was rejected: the limbs are welded to
+the torso, so cutting means capping four sockets and four stumps, and §43 spent a whole section
+killing the steps where independently-placed parts meet.
+
+Skinning has none of that. Every vertex carries its `s` along the spine and its offset from the
+centreline — the same parameterisation the fourteen links were built on — so **the spine that used
+to carry fourteen matrices now carries a thousand points**, and there is no join anywhere on the
+animal, including across a shoulder, which links never managed at all.
+
+It costs the instancing. Six animals in six poses cannot share one geometry, so the body is six
+Meshes, and `instanceColor` — where every population here keeps its per-individual tone and where
+ui.js drives its hover glow — does not exist for it. The wet/dry tint moved to a material per animal
+(three.js multiplies material colour into vertex colour in the same place, so the effect is
+identical) and the population publishes a `glowApply` that ui.js calls instead of writing into a
+buffer. That is the one change to a shared system, and it is about twenty lines.
+
+Normals are never recomputed. `flatShading` derives them in the shader, which is exact for a flat
+facet and free; the alternative is 2000 face normals per animal per frame for nothing.
+
+### The un-posing, and why it is a rotation and not a shear
+
+The OBJ is modelled **standing** — head carried high, back arched, tail sloping down to touch the
+ground. The sim's rest frame is a straight animal whose centreline does all the bending, so the
+model's own pose has to come out first or the otter swims with a permanent standing arch.
+
+The centreline is measured off the surface by plane-sectioning it, then each vertex is expressed in
+the local frame at its nearest point on that curve and re-emitted against a straight axis at the same
+arc length. Projecting onto the **polyline** rather than onto the nearest sample matters: snapping to
+samples lets two adjacent vertices land on different ones, and the seam between them tears a foot
+open. Arc length 34.14 against a straight span of 31.87 — the pose was worth 7% of the animal's own
+length.
+
+### THE SHOULDER IS NOT WHERE THE CHEST IS DEEPEST
+
+The bake's first landmark rule was "the shoulder is the peak of `halfH`", which is what a quadruped's
+profile ought to do. On this animal it is wrong, and quietly: `halfH` is nearly flat from the hips to
+the ribs — 2.95 to 3.49 across the whole torso — and its true maximum is at the waist of the BACK, a
+third of the way down the body. That put the front of the animal in the middle of it, and since the
+torso IS the body unit, every proportion downstream came out 40% wrong.
+
+The second rule, "the neck is the first local minimum of `halfW` forward of the hips", found the
+**abdominal** waist between haunch and ribcage — a real feature, 2.45 wide, and not the one wanted;
+the neck is 1.70. The head end has no such ambiguity, so the skull is found from the NOSE walking
+backwards, as the first crest, and the neck is then simply the narrowest place between it and the
+hips.
+
+Even that is only good enough to report. What sets the scale is the **shoulder JOINT**, fitted from
+the forelimb's own vertex cloud — because a width feature near the shoulder is not the shoulder, and
+because sectioning the animal perpendicular to its own axis (which the un-posed profile does, and
+which the OBJ's own frame does not) nearly erases the neck's waist anyway: 1.63 against 2.01, a dip
+of a fifth where the old reference had a third.
+
+| body units, torso = 1 | swept (§43) | `Otter.obj` |
+|---|---|---|
+| tail | 1.02 | **1.13** |
+| head | 0.28 | 0.26 |
+| nose to tail | 2.50 | **2.82** |
+| max half-width | 0.238 | 0.250 |
+| fore hip x | −0.13 | **0.00** |
+| hind hip x | −0.78 | **−0.96** |
+| hip below the axis | 0.115 | **0.194** |
+| fore leg, upper / lower | 0.20 / 0.20 | **0.16 / 0.29** |
+| hind leg, upper / lower | 0.20 / 0.20 | **0.20 / 0.19** |
+
+`S` drops 0.70 to **0.6195** so nose-to-tail stays at 1.75 m. Without that the animal grows 13% and
+every metre tuned against it — `HAUL_R`, `TAKE_R`, the romp's own spacing — quietly means something
+else. §42's decision to leave the limb constants alone ("the reference's stubbier legs are not worth
+re-tuning a working walk for") is also reversed, and had to be: a vertex is bound to the bone the
+bake fitted, so a rig bone of a different length telescopes the leg inside its own skin.
+
+### Two blends, and the second one was missing
+
+**A vertex bound to its single nearest bone tears at every joint.** The skin either side of a knee
+belonged to different rigid pieces, so the joint pulled open every time it flexed. Binding to the
+nearest TWO, mixed by inverse distance, closes it.
+
+**A socket is a distance, not a height.** The limb-versus-spine weight started as a vertical cut —
+below some fraction of the body's depth you belong to the leg. A hip socket wraps AROUND the leg, so
+skin on the flank beside a shoulder sat at weight zero while skin an inch below it sat at one, and
+the edge between them carried the entire swing of the limb. It also made the transition band tiny:
+76 partial vertices out of a thousand, nine per socket. Distance to the limb's own bone chain is
+isotropic and can be as wide as it needs to be.
+
+Measured as **deformed edge length over rest length**, over every edge in the mesh:
+
+| | median | past 2x | worst edge |
+|---|---|---|---|
+| one bone, vertical socket | 1.002 | 4.4–6.1% | **14.7x** |
+| two bones, distance socket | 1.003 | **1.9–4.7%** | **8.0x** |
+
+The median says the spine was never the problem. Everything that was ever wrong here was at a limb.
+
+A third fix has no visible symptom yet and is the kind that waits: the bone frame's reference axis
+was chosen by a threshold — world up unless the bone is nearly vertical — and a leg swinging across
+that threshold flips its frame and twists a quarter turn in one frame. It is now the world axis the
+bone points at LEAST, derived from the REST direction, so the bake and the runtime pick the same one
+without either being told and there is no threshold to cross.
+
+### What the checks say
+
+A **rest-pose round trip** — rebuild the animal from `ottermesh.js` alone and compare it to the mesh
+the bake started from — comes back at a worst error of **0.00015 body units**, which is the four
+decimal places the file is written to. That gate is what makes everything after it trustworthy: a
+skinning bug and a rig bug look identical on screen, and this separates them.
+
+Gait, re-pointed at the skin (the paw is no longer a part with a matrix; it is the patch of vertices
+bound to each limb's third bone):
+
+| | §43, rigid foot | §44, skinned |
+|---|---|---|
+| true-stance paw scrub, median | 0.000 cm | 0.074 cm |
+| paws more than 2 cm under the sand | 0.01% | 0.06% |
+| re-plants per stance frame | 0.004 | 0.005 |
+
+The scrub is worse and is not a plant failure — the plant is the same code and still exact. A paw is
+now a patch of skin whose centroid shifts slightly as its socket blends, and 0.074 cm against a 39 cm
+stance excursion is two parts in a thousand.
+
+### One more relative-versus-absolute bug, caught by looking
+
+§43's lesson was that a fitting must ask the surface where the skin is, and it fixed the RADIUS. It
+did not fix the **x**. The whisker pad sat at a typed 0.41 along the body; the nose moved from 0.46
+to 0.70 with the new mesh, and the whiskers came out of the animal's cheek. Both coordinates are
+fractions now — `at` along the head, and a direction out of the centreline — and neither can drift
+again. The eyes and ears cannot be misplaced at all any more, because they are skin.
+
+### Still owed
+
+The re-plant teleport from §43 is untouched — a foot dragged past full reach still snaps to the phase
+position in one frame, now 22 cm, on 0.5% of stance frames.
+
+**Swim and catch still stretch a socket about 4.7% past 2x.** The residual is linear blend skinning
+doing what it does at large rotations: the mesh's legs are bound STANDING and the swim pose streams
+them about 80 degrees back. Widening the band further starts dragging the belly; the real fixes are a
+rotation-aware blend, or accepting that this animal's swim pose asks for more limb rotation than a
+standing-bound mesh wants to give. Neither was worth doing blind.
+
+---
+
+## 45. The otter's skin stops tearing — `js/otters.js`, `tools/bake-otter.js` (2026-09-01)
+
+§44 left two things open and named them as a choice: blend rotations instead of positions, or swing
+the legs less. Both turned out to be right and neither was the main thing. There were **three**
+causes stacked on top of each other, and the measurement that separated them is worth more than any
+of the fixes.
+
+### What the numbers were, and are
+
+| state | edges past 2x, before | after | worst edge, before | after |
+|---|---|---|---|---|
+| walk | 1.85% | **0.13%** | 5.39x | **2.45x** |
+| haul | 3.64% | **2.45%** | 6.52x | **3.60x** |
+| swim | 4.73% | **2.65%** | 8.01x | **4.08x** |
+| catch | 4.46% | **2.55%** | 6.75x | **4.46x** |
+
+The median edge was 1.003 before and 1.005 after: the surface was never wrong and still is not. What
+changed is the tail.
+
+### Cause 1 — blending PLACES instead of MOTIONS (fixed, and it was the smallest of the three)
+
+Every vertex is told by two or three things where to go, and the answer used to be the straight-line
+average of those places. That is linear blend skinning and it fails in one way: the average of two
+points either side of a big rotation lies *inside* the arc.
+
+The fix is dual-quaternion skinning — average the rigid MOTIONS, renormalise, and the result is still
+a rigid motion, so nothing can collapse. It needs every influence to act on ONE rest position, and it
+turned out one was already there: `s`/`oy`/`oz` reproduce the un-posed vertex for every vertex, limbs
+included. So the runtime stopped reading the bone-local `ba`/`bo`/`bs` entirely and derives each
+bone's rest frame from the joints instead, the way it already derived `REFA`.
+
+**And it bought almost nothing on its own: 1.85% to 1.79% at walk.** That is the useful part of this
+section. The correct algorithm, correctly implemented, moved the number by three hundredths of a
+percent — because collapse was not what was happening.
+
+### Cause 2 — three hard tests in the weighting (this was the big one)
+
+What the bake actually did was decide, three times per vertex, with a test:
+
+```
+if (v[2] * side < 0.2) continue;          a plane through the body: a vertex just
+                                          inside it followed a leg, its neighbour
+                                          just outside did not
+if (v[0] < win[0] - 1.0) continue;        the same, along x
+bmix = min(1, d2/(d1+d2) * 1.6)           a vertex nearer bone A was ENTIRELY A
+```
+
+**262 edges — 8.7% of them — joined two vertices whose influences differed by more than half.** Those
+are the edges that stretched. Two neighbours told to follow completely different bones go completely
+different ways, and no blending scheme can save them, because by the time the blend runs the decision
+is already made.
+
+So every test became a ramp, every bone got a share instead of a place in a ranking, and the socket
+half of the field is then diffused over the mesh graph. After: **no edge above 0.54, none past half.**
+
+Three things were learned building it:
+
+- **Smooth the socket and the split separately.** Diffusing the whole influence vector together turns
+  a leg to mush: a thigh vertex ends up listening to the paw at 0.24, and the leg bends like a rope.
+  Which bone inside a limb is already continuous — it comes from a distance kernel, not a ranking —
+  and only *how much limb at all* needs diffusing.
+- **Pin the core.** Diffusion left to itself walks weight off the paw and onto the spine, and a paw
+  that half-follows the body scrubs. Vertices inside a leg's own girth are held at full limb weight;
+  only the socket band is free.
+- **Arc length along the bone chain does not work on this animal.** It was the obvious way to split
+  bones without a perpendicular seam, and the forelimb *doubles back* at the elbow — 0.16 of scapula
+  going backwards over 0.29 of forearm coming forward — so two vertices either side of the fold
+  project to arc positions far apart, and the split tore exactly where it was meant to blend.
+
+### Cause 3 — the bind pose was one end of the range, not the middle
+
+How far a socket has to shear is set by how far the leg has swung *since it was bound*, and nothing
+else. `Otter.obj` was modelled STANDING. Swimming streams the legs about 80 degrees back — and
+swimming is seventy per cent of this animal's screen time, so the pose it was drawn in was the one
+pose it almost never holds.
+
+So the legs are swung back once, at load, into a bind pose in the middle of the range, using the same
+skinning the runtime uses, and every rest position and bone rest frame is re-read off that. `swim`
+went 3.57% to 2.84% and, importantly, **walk did not move at all**: the far end of the range paid
+nothing for it.
+
+The mesh file is untouched. It is a record of the OBJ; where the animal holds its legs is the rig's
+business.
+
+### The knobs, and what they trade
+
+All three were chosen by measurement — bake, then `check-stretch` in every state, then `check-gait`.
+The one worth naming is `SHARE_P`, which sets how tightly a bone claims its own middle. At 6 the
+stretch is lowest; at 6 the paw is also only 0.75 bound to its own toe bone, and a planted foot
+scrubbed 0.111 cm a frame against 0.074 before any of this. **12 puts the scrub back to 0.076 for
+0.24% more stretched edges at swim.** A planted foot is a promise the animal makes to the ground;
+seven edges are not.
+
+### The corrective step — the re-plant teleport, gone
+
+§43's re-plant dropped the plant and let the foot appear 22 cm away in the *same frame*: no lift, no
+swing, no landing. The reason it survived two sections is that the gait phase is driven by DISTANCE
+TRAVELLED on purpose, and interrupting it for one leg looked like a second authority fighting the
+first.
+
+It is not, if the leg borrows from a CONSTANT rather than from the phase. Each leg already carries
+one — `GAIT_PH` — so losing a footing now borrows from a per-leg offset until that leg sits at the top
+of its swing, and distance goes on driving everything. The offset unwinds back toward zero so the
+diagonal couplets re-form, and it unwinds *only while the leg is in the air* and never by more than
+half the phase the distance just advanced: so it can neither move a planted foot nor stall a swinging
+one. The swing itself starts from where the foot actually is, eased onto the nominal path, or the
+lift would just be the same jump moved one frame later.
+
+**Re-plants per stance frame: 0.005 to 0.000.** 38 corrective steps were taken over 6003 walk frames
+and not one of them moved a planted foot.
+
+An earlier version eased EVERY swing off its last stance position, not just a corrective one. It cost
+nothing to write and it was wrong: an ordinary swing already starts where the stance left off, and
+running all of them through the blend spread a 5 cm discretisation error across the lot and put the
+median frame-to-frame discontinuity up twentyfold, to fix a jump that was not there.
+
+### Two gates changed, because their subjects did
+
+- `check-roundtrip.js` no longer has a second parameterisation to check against the first — there is
+  only one now. It checks that `s`/`oy`/`oz` reproduce the OBJ, and then, separately, that **bones
+  which have not moved move nothing**: rebuild each rest frame from the emitted joints, compose it
+  with its own inverse, blend, apply. That is not a tautology. It fails the moment the bake and the
+  runtime disagree about how a bone frame is built, and that disagreement is invisible in the rest
+  pose while being fatal in every posed frame. It reads 0.000000000.
+- `check-gait.js` moved from 20 Hz to **60 Hz**. At 20 Hz and 2.75 m/s a whole gait cycle is under
+  four samples and the swing is one of them, so every measure of how *smoothly* a foot moves reads as
+  noise — the median second difference came out at 14 cm on a gait with nothing wrong with it. And
+  its re-plant metric only looked at frames where a plant existed on both sides, which goes blind the
+  moment the fix lifts the foot instead of dropping the plant: the jump moves into a frame the filter
+  throws away. It now also measures the paw second difference in every phase.
+
+### Still owed
+
+**A foot leaves the ground at full swing speed.** The 60 Hz gate found it: the worst frame-to-frame
+paw discontinuity while walking is **26 cm**, every one of the top ten is the ordinary stance-to-swing
+crossing on a hind leg at full speed in a hard turn, and it measures the same before and after
+everything above. Nothing teleports — the position is continuous — but the velocity is not: a planted
+foot is world-stationary right up to lift-off and then moving at swing speed in one frame.
+
+Shaping the swing as a cubic with the stance's own slope at both ends was tried and **does not fix
+it**: the max stayed at 26.9 cm and the median discontinuity went up twentyfold. So the mismatch is
+not in x, and the next person should find out which axis it *is* in before writing any more code —
+the diagonal is a hard turn, so the sideways sweep of a world-planted foot under a yawing body is the
+first suspect, and the reach clamp releasing at lift-off is the second.
+
+### Cost
+
+Six skinned otters went from about 1.44 to about 1.5 ms a step measured the same way — dual
+quaternions are roughly twice the arithmetic of two lerps, on a thousand vertices that were never the
+expensive part.

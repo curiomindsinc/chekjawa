@@ -25,9 +25,12 @@
 (function () {
   'use strict';
 
-  // trophic rows, top of the panel first. Add APEX PREDATORS above
-  // PREDATORS when the otter arrives (§9).
+  // trophic rows, top of the panel first. APEX PREDATORS was added in
+  // §42 when the smooth-coated otter arrived, as the note below asked.
+  // Empty rows are skipped at layout time, so it cost nothing to have
+  // carried the plan here since §9.
   var LEVELS = [
+    { label: 'APEX PREDATORS',  cls: 'lv-apex' },
     { label: 'PREDATORS',       cls: 'lv-pred' },
     { label: 'GRAZERS',         cls: 'lv-herb' },
     { label: 'FILTER FEEDERS',  cls: 'lv-filt' },

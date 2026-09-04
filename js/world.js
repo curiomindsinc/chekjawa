@@ -437,6 +437,49 @@
     var BASE_FOG_NEAR = 210, BASE_FOG_FAR = 720;
     scene.fog = new THREE.Fog(0xbcd6e2, BASE_FOG_NEAR, BASE_FOG_FAR);
 
+    /* ---------- the underwater grade (§48) ----------
+       What the shore looks like from UNDER the water, which until now
+       it did not: the camera could sit at 0.8 m with 2 m of sea over
+       it and the picture was unchanged — clear air with a blue lid.
+
+       This is a WORLD TRUTH and not a cinematic mode. The free camera
+       gets it too, because it is simply what is there.
+
+       The sky sphere is the reason this cannot be done with fog alone.
+       `skyMat` is built `fog: false` (it is a backdrop, it must not be
+       bleached by distance haze), so no amount of fog will darken it —
+       from twenty centimetres under the surface you would still be
+       looking at a bright tropical sky in every direction. So the
+       grade drives the sky's own three uniforms as well, and they are
+       written every frame by the day/night blend anyway, which makes
+       them free to lean on.
+
+       TWO MARKS, NOT ONE. The trigger is a height compared against a
+       moving waterline, so a camera parked at the surface would strobe
+       between the two grades at frame rate. Same hysteresis the egret
+       uses to decide it has arrived (`egrets.js` ARRIVE_BELOW /
+       LEAVE_ABOVE), for exactly the same reason.
+
+       AND IT ASKS THE GROUND, not just the tide. `cam.y < tide` is
+       true over the whole upper shore at any decent high water — the
+       camera can be at 1 m looking down at mud that dries at every
+       low. What makes it underwater is water actually being at that
+       spot, so the test is the same one every organism here uses:
+       is the column height below the tide. */
+    var UW_FOG  = new THREE.Color(0x0d3d47);
+    var UW_BG   = new THREE.Color(0x0b2f38);
+    var UW_TOP  = new THREE.Color(0x07202a);   // the surface seen from below
+    var UW_MID  = new THREE.Color(0x0e3844);
+    var UW_BOT  = new THREE.Color(0x175260);
+    var UW_HEMI = new THREE.Color(0x2f7080);
+    var UW_GRND = new THREE.Color(0x08181c);
+    var UW_FOG_NEAR = 1.5, UW_FOG_FAR = 62;    // visibility collapses; this is silty water
+    var UW_SUN = 0.40, UW_HEMI_I = 0.85;       // and the sun is mostly gone
+    var UW_IN = 0.12, UW_OUT = 0.12;           // metres either side of the waterline
+    var UW_RATE = 4.0;                         // eased — ~0.35 s through the surface
+    var underMix = 0, under = false;
+    var uwTmp = new THREE.Color();
+
     var skyMat = new THREE.ShaderMaterial({
       side: THREE.BackSide, fog: false,
       uniforms: {
@@ -689,8 +732,14 @@
        leaves anything standing on the flat plainly visible through it. All the
        plane itself contributes is a faint blue wash and the specular-ish
        shading of the chop. */
+    /* DOUBLE-SIDED as of §48, so the surface is still there when the camera
+       goes under it. A front-sided plane simply vanishes from below and the
+       underwater shot loses its ceiling — the one surface that tells you
+       which way is up. Costs nothing from above: a back face is only ever
+       drawn when you are beneath the water to see it. */
     var seaMat = new THREE.MeshLambertMaterial({
-      color: 0x54b0d8, transparent: true, opacity: 0.30, depthWrite: false
+      color: 0x54b0d8, transparent: true, opacity: 0.30, depthWrite: false,
+      side: THREE.DoubleSide
     });
     var sea = new THREE.Mesh(seaGeo, seaMat);
     sea.renderOrder = 1;
@@ -845,11 +894,22 @@
         placed++;
       }
     }
-    scatterIn(['mangrove'], 46, mangrove, -0.2);
+    scatterIn(['mangrove'], 70, mangrove, -0.2);
     // `props` holds exactly the mangroves at this point (rocks are instanced
     // below and never go through place()) — the pneumatophore field needs
     // their positions to cluster around
     var mangroveAt = props.slice();
+    /* Plain {x,y,z} records, one per tree — the shape every other
+       population's individuals already have, so a mangrove can go
+       straight into a `pops` entry and the click/hover/follow system
+       (ui.js) needs no special case for the one species whose "body" is
+       a real raycastable Mesh instead of an InstancedMesh row. The tree
+       is deliberately still reachable off `.mesh` for anything that
+       ever wants the real Object3D (a raycast, say) — it just never
+       moves, so a plain snapshot of its position is exact for good. */
+    var mangroveList = mangroveAt.map(function (m) {
+      return { x: m.position.x, y: m.position.y, z: m.position.z, mesh: m };
+    });
 
     /* ---------- pneumatophore field ----------
        Dense around each trunk, thinning outward, plus a looser scatter across
@@ -1041,6 +1101,30 @@
       rocks: rocks, halfX: SIM_HALF_X, zMin: SIM_Z_MIN, zMax: SIM_Z_MAX
     });
 
+    /* ---------- sea lettuce, Ulva (§37) ----------
+       Same handle again, but the first producer that needs `rocks` for
+       more than just staying out of the way: a third of its population
+       is anchored to a boulder cap via RockField rather than rooted in
+       sand, which is why it is built after `rocks` exists just like
+       the two plants above it. See ulva.js. */
+    var ulva = Ulva.build({
+      scene: scene, N: N, heights: hArr, wet: wet,
+      indexAt: indexAt, heightAt: columnHeightAt, waterAt: waterAt,
+      rocks: rocks, halfX: SIM_HALF_X, zMin: SIM_Z_MIN, zMax: SIM_Z_MAX
+    });
+
+    /* ---------- Sargassum, the brown seaweed canopy (§37) ----------
+       Same handle again, and rock-only like the third of ulva's
+       population — but with no sediment branch at all, since a real
+       holdfast (unlike a contact-clinging sheet) only ever grips
+       stone. See sargassum.js for why that puts it in ulva's own
+       band rather than the low shore ROSTER.md describes. */
+    var sargassum = Sargassum.build({
+      scene: scene, N: N, heights: hArr, wet: wet,
+      indexAt: indexAt, heightAt: columnHeightAt, waterAt: waterAt,
+      rocks: rocks, halfX: SIM_HALF_X, zMin: SIM_Z_MIN, zMax: SIM_Z_MAX
+    });
+
     /* ============================================================
        world object
        ============================================================ */
@@ -1071,6 +1155,7 @@
       obstacles: [],          // filled in when species arrive (§11 step 4)
       floraMeshes: [],
       rocks: rocks,           // [{x,z,r,top}] — where barnacles and nerites will sit
+      mangroves: mangroveList, // [{x,y,z,mesh}] — one per tree, for the click/follow system
 
       tide: tideNow,          // live, metres CD
       tideDir: -1,            // live, +1 flooding / -1 ebbing
@@ -1080,6 +1165,7 @@
 
       daylight: 1,
       isNight: false,
+      underwater: 0,          // live, 0..1 — how far the CAMERA is into the water (§48)
 
       waterAt: waterAt,                 // (x,z) -> surface height, or null if dry
       wetAt: wetAt,                     // (x,z) -> 0..1 how recently submerged
@@ -1104,6 +1190,20 @@
       spoonAt: spoongrass.at,
       grazeSpoon: spoongrass.graze,
       spoongrass: spoongrass,
+      /* And again for sea lettuce (§37) — its own pair of verbs for the
+         same reason spoonAt/grazeSpoon are separate from grassAt: a
+         snail eating Ulva must not silently be eating film or spoon
+         grass instead just because they overlap a band. */
+      ulvaAt: ulva.at,
+      grazeUlva: ulva.graze,
+      ulva: ulva,
+      /* And again for Sargassum (§37) — its own pair of verbs, same
+         reasoning as spoonAt/grazeSpoon and ulvaAt/grazeUlva: a
+         hermit crab taking a snack of Sargassum must not silently
+         drain sea lettuce or film just because the bands overlap. */
+      sargAt: sargassum.at,
+      grazeSarg: sargassum.graze,
+      sargassum: sargassum,
       poolAt: poolAtXZ,                 // (x,z) -> pool record, or null
       heightAt: columnHeightAt,         // (x,z) -> terrain height, metres CD
       bandAtZ: bandAt,
@@ -1229,6 +1329,8 @@
         biofilm.update(dt, worldOut.daylight);
         seagrass.update(dt, t, worldOut.daylight);
         spoongrass.update(dt, t, worldOut.daylight);
+        ulva.update(dt, t, worldOut.daylight);
+        sargassum.update(dt, t, worldOut.daylight);
 
         /* ---- biofilm on the boulders ----
            Same sheen as the flat, painted per rock instance from the film at
@@ -1309,6 +1411,42 @@
 
         worldOut.daylight = daylight;
         worldOut.isNight = daylight < 0.3;
+
+        /* ---- the underwater grade (§48) ----
+           LAST, and deliberately so: every line above writes the daylight
+           values into exactly the channels this then leans on, so the grade
+           is applied ON TOP of whatever hour it is rather than instead of
+           it. Underwater at dusk is dark green, not the same green as noon.
+
+           Unconditional rather than wrapped in `if (under)`: `underMix` at 0
+           makes every lerp below a no-op and puts the fog planes back on
+           their base values, so surfacing restores itself. A guard here
+           would leave the last frame's fog distances stuck at 62 m. */
+        var wantUnder = false;
+        if (cam) {
+          var camY = cam.position.y;
+          var camGround = columnHeightAt(cam.position.x, cam.position.z);
+          var camWet = camGround < tideNow;
+          wantUnder = under ? (camWet && camY <= tideNow + UW_OUT)
+                            : (camWet && camY <  tideNow - UW_IN);
+        }
+        under = wantUnder;
+        underMix += ((under ? 1 : 0) - underMix) * Math.min(1, UW_RATE * dt);
+
+        var um = underMix, uDim = 0.25 + 0.75 * daylight;
+        scene.fog.color.lerp(uwTmp.copy(UW_FOG).multiplyScalar(uDim), um);
+        scene.fog.near = BASE_FOG_NEAR + (UW_FOG_NEAR - BASE_FOG_NEAR) * um;
+        scene.fog.far  = BASE_FOG_FAR  + (UW_FOG_FAR  - BASE_FOG_FAR)  * um;
+        scene.background.lerp(uwTmp.copy(UW_BG).multiplyScalar(uDim), um);
+        skyMat.uniforms.top.value.lerp(uwTmp.copy(UW_TOP).multiplyScalar(uDim), um);
+        skyMat.uniforms.mid.value.lerp(uwTmp.copy(UW_MID).multiplyScalar(uDim), um);
+        skyMat.uniforms.bot.value.lerp(uwTmp.copy(UW_BOT).multiplyScalar(uDim), um);
+        hemi.color.lerp(uwTmp.copy(UW_HEMI).multiplyScalar(uDim), um);
+        hemi.groundColor.lerp(uwTmp.copy(UW_GRND).multiplyScalar(uDim), um);
+        sun.intensity  += (UW_SUN * uDim    - sun.intensity)  * um;
+        hemi.intensity += (UW_HEMI_I * uDim - hemi.intensity) * um;
+        starMat.opacity *= (1 - um);          // no stars through two metres of water
+        worldOut.underwater = um;
       }
     };
 

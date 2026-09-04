@@ -40,7 +40,7 @@
 
   /* ---------- the knobs ---------- */
   var S = 0.26;                 // metres per body unit — see the scale note below
-  var COUNT = 340;
+  var COUNT = 550;
   var ZONE = [2.2, 2.8];        // metres CD — guide §1, the barnacle band
   var CLUSTER = 7;              // how many settle around one seed point
   var CLUSTER_R = 0.55;         // metres — how tight a cluster is

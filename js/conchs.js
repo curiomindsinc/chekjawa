@@ -41,7 +41,7 @@
 
   /* ---------- the knobs ---------- */
   var S = 0.34;                 // metres per body unit — a ~6 cm shell, exaggerated like the rest
-  var COUNT = 44;
+  var COUNT = 70;
   var ZONE = [1.0, 1.8];        // metres CD — guide §1
   var Z_RANGE = [-30, 30];      // the sandy flat it works
   var WANT_DEPTH = [0.10, 0.55];// metres of water it tries to keep over itself

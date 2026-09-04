@@ -89,6 +89,18 @@
        standing in water while the mat up on the flat has already gone
        over — and a single "seagrass" line would hide exactly that. */
     var spoonEl = document.getElementById('spoon-state');
+    /* Sea lettuce (§37) gets a third row for the same reason: it sits a
+       band higher again, into the barnacle boulders, and its tide beat
+       is the opposite direction to the two plants above it — it goes
+       PALE, not olive, so the readout says so rather than reusing
+       "wilted"/"lifted" language that would read as the same thing. */
+    var ulvaEl = document.getElementById('ulva-state');
+    /* Sargassum (§37) gets a fourth row. Its beat is the tape meadow's
+       stand/collapse (§26), not a colour change, so the readout says
+       "standing" / "collapsed" rather than reusing ulva's bleach
+       language or spoon grass's wilt language — three different tide
+       beats on this shore, three different vocabularies. */
+    var sargEl = document.getElementById('sarg-state');
 
     btnSpring.addEventListener('click', function () {
       var r = world.jumpToSpringLow();
@@ -174,6 +186,14 @@
         spoonEl.textContent = lift > 0.9 ? 'lifted, green'
           : lift < 0.1 ? 'wilted on the sand'
           : Math.round(lift * 100) + '% still wet';
+        var billow = world.ulva.lifted();
+        ulvaEl.textContent = billow > 0.9 ? 'billowing, green'
+          : billow < 0.1 ? 'bleached, shrivelled'
+          : Math.round(billow * 100) + '% still green';
+        var standS = world.sargassum.standing();
+        sargEl.textContent = standS > 0.9 ? 'standing, swaying'
+          : standS < 0.1 ? 'collapsed on the rock'
+          : Math.round(standS * 100) + '% still up';
       }
 
       predictAccum += dt;

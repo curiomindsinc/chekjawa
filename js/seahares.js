@@ -48,7 +48,7 @@
 
   /* ---------- the knobs ---------- */
   var S = 0.30;                 // metres per body unit — a 30 cm animal, and Dolabella really is
-  var COUNT = 16;
+  var COUNT = 26;
   var ZONE = [0.05, 0.92];      // metres CD — the seagrass lagoon, matching seagrass.js
   var Z_RANGE = [16, 60];
   var SPACING = 3.5;            // metres — they are big and they do not pile up

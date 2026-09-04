@@ -33,6 +33,59 @@
   var CLAW_MAIN  = [0xf08b31, 0xe57e26, 0xf59a45];             // orange cheliped
   var CLAW_DARK  = [0xc96a1c, 0xb75e17];                       // shaded palm
   var CLAW_TIP   = [0xffcf94, 0xffdfae];                       // bleached fingertips
+  /* From reference/crabclaw.jpg — see the note above clawPalm(). */
+  var CLAW_HOT   = [0xff8c22, 0xf87a14];                       // the flush where palm meets fingers
+  var CLAW_DOT   = [0xa84d16, 0xbb5a1d];                       // the stipple of dark papillae
+  var FING_DARK  = [0x2c2522, 0x362d29, 0x231d1a];             // horn-black fingers
+  var FING_DTIP  = [0x14100e];                                 // and their worn points
+  var TOOTH      = [0xf3e6cf];                                 // pale cusps along the gape
+  var TOOTH_DARK = [0x6f6058];
+
+  /* How slim each species draws a finger: its LENGTH over its THICKNESS
+     at the size that species uses. finger() needs it to size the hook —
+     see the note there. THESE MUST TRACK THE TWO CALL SITES:
+       crabs.js        MAJOR.finger 0.40, thick sc      -> 0.40
+       hermitcrabs.js  ARM.finger   0.21, thick sc      -> 0.21
+     If either changes and this does not, the hook quietly rescales and
+     the claw stops closing. */
+  var FIDDLER_SLIM = 0.40;
+  var HERMIT_SLIM  = 0.21;
+
+  /* How much each finger hooks, as a fraction of its own drawn length.
+     They are NOT the same. The dactyl is the working finger and curves
+     hard; the pollex is an outgrowth of the palm and is very nearly
+     straight, with only a slight upward set at the tip. Drawing them
+     with the same bend was most of why the pair read as a pair of
+     tongs rather than as a claw. */
+  var HOOK_DACTYL = 0.15;
+  var HOOK_POLLEX = 0.05;
+
+  /* ------------------------------------------------------------
+     CLAW — the numbers a behaviour file needs to HANG the fingers.
+
+     They live here rather than in crabs.js because they are properties
+     of the geometry above: change a hook and the shut angle that makes
+     the claw close changes with it. Both crab species read these, so
+     there is one set of them and no chance of the two drifting apart.
+
+     Every one is a fraction of the finger's DRAWN LENGTH, which is
+     what makes them species-independent — see the `slim` note on
+     finger(). The arithmetic, with lf = the drawn finger length:
+
+       dactyl tip, unrotated   (ROOT - HOOK_DACTYL) * lf     = +0.040 lf
+       pollex tip              (-ROOT + HOOK_POLLEX*0.84) lf = -0.148 lf
+       gap between them                                        0.188 lf
+
+     and the dactyl is lf long, so closing it needs sin(t) = 0.188,
+     t = 0.19 rad. That is SHUT. Anything that changes ROOT or either
+     hook has to move SHUT with it or the claw stops meeting.
+     ------------------------------------------------------------ */
+  var CLAW = {
+    ROOT: 0.19,        // how far off the palm's axis each finger is hung
+    POLLEX: 0.84,      // the fixed finger's length, against the dactyl's 1.0
+    SHUT: 0.19,        // radians the dactyl is held DOWN when the claw is closed
+    OPEN: 0.62         // radians it lifts per unit of `gape`
+  };
   var LEG_MAIN   = [0xe0873f, 0xd07a34, 0xea9550];
   var LEG_DARK   = [0xa85f27];
   var STALK      = [0x2a3350, 0x333d5e];
@@ -90,34 +143,112 @@
     }));
   }
 
+  /* ------------------------------------------------------------
+     THE CHELIPED, rebuilt against reference/crabclaw.jpg.
+
+     The first version was a rectangular slab with two straight rods
+     on the end of it, and a broadside made that unmistakable. The
+     photograph shows four things the slab had none of, and all four
+     are cheap:
+
+       a teardrop palm   deepest a third of the way from the wrist,
+                         tapering toward the finger hinge — not a
+                         block of even depth
+       hooked fingers    they curve hard toward each other and CROSS
+                         near the tips. Straight fingers read as
+                         chopsticks; the hook is what makes a claw
+                         look like it could hold something
+       a toothed gape    cusps along the inner edges, dying out toward
+                         the points
+       a stippled palm   dark papillae scattered over the orange
+
+     The teeth are done by MODULATING THE PROFILE rather than by
+     instancing little cusps the way the sea star's knobs are
+     (seastarbody.js). Three cusps on a part carried twice per
+     cheliped, twice per crab, across a hundred and fourteen crabs is
+     over a thousand extra instances for a detail two pixels wide; a
+     wobble in the profile costs four extra rings on one shared
+     geometry. Same argument the barnacle's ribs are painted under.
+
+     COLOUR IS PER SPECIES, ANATOMY IS SHARED. The photograph's
+     fingers are horn-black, and that is right for the hermit crab,
+     which gets `dactylDark` / `pollexDark`. It is NOT right for
+     a fiddler: its major claw is a display organ, and reference/
+     fiddler crab.png shows it orange with pale tips. So the fiddler
+     keeps its own fingers and both species share the shape.
+     ------------------------------------------------------------ */
+
   /* The palm of the major cheliped — the whole reason this animal is
      worth drawing. Flattened side to side (aspectZ), deep top to
      bottom, and nearly as long as the carapace is wide. */
   function clawPalm() {
     var pos = sweep({
-      len: 1.0, rad: 0.31, seg: 8, rings: 6, round: 2.7,
-      aspectY: 1.0, aspectZ: 0.46, jitter: 0.12, seed: 29,
-      profile: ramp([[0, 0.52], [0.22, 0.96], [0.55, 1.0], [0.82, 0.82], [1, 0.60]])
+      len: 1.0, rad: 0.33, seg: 9, rings: 7, round: 2.8,
+      aspectY: 1.0, aspectZ: 0.44, jitter: 0.11, seed: 29,
+      // teardrop: heavy at the heel, tapering to the finger hinge
+      profile: ramp([[0, 0.46], [0.16, 0.94], [0.34, 1.0], [0.60, 0.90], [0.82, 0.72], [1, 0.54]]),
+      // and the whole palm arcs, so the fingers set off at an angle to the wrist
+      curveY: function (t) { return 0.085 * t * t; }
     });
     return geom(pos, colorize(pos, function (t, u, i) {
-      if (u < 0.30) return pk(CLAW_DARK, i);
-      if (t > 0.80 && u > 0.55) return pk(CLAW_TIP, i);
+      if (u < 0.28) return pk(CLAW_DARK, i);
+      // the hot flush just behind the fingers, the clearest mark on the reference
+      if (t > 0.84) return pk(CLAW_HOT, i);
+      if (hash(i, 23, 7) > 0.84) return pk(CLAW_DOT, i);     // stippled papillae
+      if (t > 0.72 && u > 0.62) return pk(CLAW_TIP, i);
       return pk(CLAW_MAIN, i);
     }));
   }
 
-  /* The two fingers. They curve TOWARD each other so a closed claw
-     leaves the pinched gap the reference shows, instead of meeting
-     flush like a pair of chopsticks. */
-  function finger(dir, seed) {
+  /* One finger. `dir` is which way it hooks: -1 is the DACTYL, which
+     hangs high on the palm and curves DOWN onto the finger below it;
+     +1 is the POLLEX, low on the palm and set slightly up. Either way
+     the pair close on the pinched gap the reference shows instead of
+     meeting flush.
+
+     `HOOK` is that bend as a fraction of the finger's drawn length.
+
+     `dark` swaps the palette to horn-black for the hermit crab.
+
+     `slim` is the ratio the species draws this part at — its LENGTH
+     divided by its THICKNESS — and it is not optional. facet.js's
+     header warns that a curve is a fraction of the part's LENGTH while
+     a fit-to-box pass would rescale it by THICKNESS; `curveY` has the
+     same trap the other way round, because it is added straight to the
+     ring's y and `put()` scales y by `thick`. So a hook written as a
+     bare number is a fraction of the finger's WIDTH, not its length —
+     which meant shortening the fingers made the hook silently half
+     again as strong, and at rest the two sprang apart instead of
+     closing. Pass the ratio, convert here, and HOOK below is what it
+     says it is: a fraction of the drawn length. */
+  function finger(dir, seed, dark, slim, HOOK) {
+    /* Taper with cusps riding on it. The cusps fade out toward the
+       point, because the business teeth of a claw are near the hinge
+       where the leverage is — which is exactly what the photograph
+       shows. */
+    var taper = ramp([[0, 1.0], [0.32, 0.88], [0.62, 0.64], [0.86, 0.34], [1, 0.08]]);
+    function profile(t) {
+      var amp = 0.22 * (1 - t) * (1 - t);
+      return taper(t) * (1 + amp * Math.abs(Math.sin(t * Math.PI * 3.1)) - amp * 0.45);
+    }
     var pos = sweep({
-      len: 1.0, rad: 0.115, seg: 7, rings: 5, round: 2.5, aspectZ: 0.62,
-      jitter: 0.10, seed: seed,
-      profile: ramp([[0, 1.0], [0.35, 0.86], [0.7, 0.58], [1, 0.16]]),
-      curveY: function (t) { return dir * 0.11 * t * t; }
+      len: 1.0, rad: 0.145, seg: 7, rings: 10, round: 2.5, aspectZ: 0.72,
+      jitter: 0.08, seed: seed,
+      profile: profile,
+      // enough hook to close the gap the rest split opens, and no more
+      curveY: function (t) { return dir * HOOK * slim * Math.pow(t, 1.35); }
     });
     return geom(pos, colorize(pos, function (t, u, i) {
-      return t > 0.62 ? pk(CLAW_TIP, i) : pk(CLAW_MAIN, i);
+      /* Which side of the finger faces the gape depends on which way
+         it hooks: the dactyl's biting edge is underneath it, the
+         pollex's is on top. */
+      var onGape = dir < 0 ? (u < 0.34) : (u > 0.66);
+      if (t < 0.14) return pk(CLAW_HOT, i);                  // the flush carried over from the palm
+      if (onGape && t < 0.74 && hash(i, 31, 4) > 0.45) {
+        return dark ? pk(TOOTH_DARK, i) : pk(TOOTH, i);      // cusps, catching the light
+      }
+      if (dark) return t > 0.78 ? FING_DTIP[0] : pk(FING_DARK, i);
+      return t > 0.66 ? pk(CLAW_TIP, i) : pk(CLAW_MAIN, i);
     }));
   }
 
@@ -249,8 +380,22 @@
       eye: eye(),
       armSeg: armSeg(),
       clawPalm: clawPalm(),
-      clawUpper: finger(-1, 31),   // dactyl, hooks down
-      clawLower: finger(1, 37),    // pollex, hooks up to meet it
+      /* NAMED BY ANATOMY, NOT BY WHERE THEY SIT. They were `clawUpper`
+         and `clawLower` until the two swapped over, at which point the
+         names were actively lying about the parts. The dactyl is the
+         long movable finger and it now sweeps along UNDERNEATH; the
+         pollex is the short fixed one riding on top. Each hooks toward
+         the other, which is what `dir` is: +1 hooks up, -1 hooks down. */
+      // the movable finger: long, hung high, hooking down onto the pollex
+      dactyl: finger(-1, 31, false, FIDDLER_SLIM, HOOK_DACTYL),
+      // the fixed one: shorter, hung low, near-straight, part of the palm
+      pollex: finger(1, 37, false, FIDDLER_SLIM, HOOK_POLLEX),
+      /* The same two shapes in horn-black, for the hermit crab. Two
+         extra cached geometries and no per-instance cost — a different
+         species just points its InstancedMesh at a different one, and
+         it is also where the second `slim` ratio gets to live. */
+      dactylDark: finger(-1, 31, true, HERMIT_SLIM, HOOK_DACTYL),
+      pollexDark: finger(1, 37, true, HERMIT_SLIM, HOOK_POLLEX),
       legSeg: legSeg(),
       legTip: legTip(),
       burrow: burrow(),
@@ -259,5 +404,5 @@
     return cache;
   }
 
-  window.CrabBody = { parts: parts, material: Facet.material };
+  window.CrabBody = { parts: parts, material: Facet.material, CLAW: CLAW };
 })();
